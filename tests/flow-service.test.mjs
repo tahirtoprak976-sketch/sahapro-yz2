@@ -234,21 +234,102 @@ test("H12: bağlı kesinleşmiş kayıt varken iptal CANCEL_BLOCKED; bağ yokken
 });
 
 // ── 13. Teknik hata ↔ iş reddi ayrımı ve yeniden deneme (T10/T11) ────────────
-test("H13: ek hazırlama hatası → teknik_hata (reddedildi DEĞİL); aynı paketle resume temizler", async () => {
+test("H13: ek YAZIMI hatası → teknik_hata (reddedildi DEĞİL); aynı paketle resume temizler", async () => {
   const { svc, store } = await setup();
-  const bad = pkt({ attachments: [{ name: "bozuk", bytes: "bayt-degil" }] });
-  const t = await svc.intakePacket(bad);
+  const p = pkt({ attachments: [{ name: "fis.jpg", bytes: new Uint8Array([9, 9]) }] });
+  // ek yazım tx'ini patlat (test enjeksiyonu) — rapor açıldı ama ek yazılamadı
+  const t = await svc.intakePacket(p, { failAt: "attachments" });
   assert.equal(t.result, "tech_error");
   assert.equal(t.report.state, "teknik_hata");
+  assert.ok(t.report.last_tech_error);
+  assert.equal((await store.all("attachments")).length, 0, "yarım ek yok (abort)");
   // teknik_hata'dan red yok; ofis de göremez (kontrol yalnız gonderildi'den başlar)
   assert.equal(await code(svc.startCheck(t.report.id, OFIS, t.report.version)), ERR.TRANSITION_DENIED);
-  // aynı op-key + aynı içerik, sağlam ek ile yeniden gönderim → resume
-  const good = pkt({ attachments: [{ name: "fis.jpg", bytes: new Uint8Array([9, 9]) }] });
-  const r = await svc.intakePacket(good);
+  // aynı op-key + aynı içerik (aynı ek baytları) ile yeniden gönderim → resume
+  const r = await svc.intakePacket(p);
   assert.equal(r.result, "resumed");
   assert.equal(r.report.state, "gonderildi");
   assert.equal((await store.all("reports")).length, 1, "tek rapor");
   assert.equal((await store.all("attachments")).length, 1, "ek bu kez bağlandı");
+});
+
+// ── 13b. Biçimi bozuk ek → paket geçersiz, rapor hiç açılmaz ─────────────────
+test("H13b: ek bayt dizisi değilse PACKET_INVALID — yarım kayıt kalmaz", async () => {
+  const { svc, store } = await setup();
+  const bad = pkt({ attachments: [{ name: "bozuk", bytes: "bayt-degil" }] });
+  assert.equal(await code(svc.intakePacket(bad)), ERR.PACKET_INVALID);
+  assert.equal((await store.all("reports")).length, 0, "rapor açılmadı");
+});
+
+// ── 15. Fingerprint sözleşmesi: ek içeriği/sırası değişimi çakışma, taşıma meta'sı değil ──
+test("H15: aynı op-key + ek İÇERİĞİ değişti → OP_CONFLICT; ek SIRASI değişti → OP_CONFLICT", async () => {
+  const { svc, store } = await setup();
+  const a1 = { name: "fis1.jpg", bytes: new Uint8Array([1, 1]) };
+  const a2 = { name: "fis2.jpg", bytes: new Uint8Array([2, 2]) };
+  await svc.intakePacket(pkt({ attachments: [a1, a2] }));
+  // alanlar aynı, ek içeriği farklı → sessiz kabul YOK
+  const c1 = await code(svc.intakePacket(pkt({ attachments: [{ name: "fis1.jpg", bytes: new Uint8Array([7, 7]) }, a2] })));
+  assert.equal(c1, ERR.OP_CONFLICT, "ek içeriği değişimi aynı op-id ile kabul edilemez");
+  // alanlar aynı, ekler aynı ama SIRA farklı → çakışma (sıra da içeriktir)
+  const c2 = await code(svc.intakePacket(pkt({ attachments: [a2, a1] })));
+  assert.equal(c2, ERR.OP_CONFLICT, "ek sırası değişimi de çakışmadır");
+  assert.equal((await store.all("reports")).length, 1);
+});
+
+test("H16: taşıma meta'sı (yeniden gönderim/zaman) sahte OP_CONFLICT üretmez → existing", async () => {
+  const { svc } = await setup();
+  const a = await svc.intakePacket(pkt());
+  assert.equal(a.result, "created");
+  // aynı içerik; yeniden gönderim bilgisi eklenmiş/farklı — fingerprint'e GİRMEZ
+  const b = await svc.intakePacket({ ...pkt(), sent_at: "2026-10-18T10:00:00Z", retry_no: 3, channel: "whatsapp-yeniden" });
+  assert.equal(b.result, "existing", "taşıma meta'sı değişimi yeni çakışma değildir");
+  assert.equal(b.report.id, a.report.id);
+});
+
+// ── 17. Geç kalan hata yazımı yarışı: kazanan onay asla kirlenmez/düşürülmez ──
+test("H17: onay yarışını kaybedenin geç kalan hata notu kazananı ezmez", async () => {
+  const { svc, store, config, name } = await setup();
+  const { id, report } = await toApprovalReady(svc);
+  const store2 = await FlowStore.open(name, indexedDB);
+  opened.push({ store: store2, name });
+  const svc2 = createFlowService({ store: store2, config });
+  // 1) kazanan onaylar
+  const win = await svc.approve(id, YON, report.version, report.rev_no);
+  assert.equal(win.result, "approved");
+  // 2) kaybedenin bayat isteği (eski sürümle) hataya düşer
+  const c = await code(svc2.approve(id, YON2, report.version, report.rev_no));
+  assert.ok(c === ERR.VERSION_CONFLICT || c === null, "bayat istek onaylanamaz");
+  // 3) kaybedenin catch'i geç kalan not yazmaya kalkar — koruma engellemeli
+  const r = await store.get("reports", id);
+  assert.equal(r.state, "onaylandi", "kazananın durumu korunur");
+  assert.equal(r.last_tech_error, undefined, "kazananın kaydına hata notu BULAŞMADI");
+  // 4) doğrudan markTechError çağrısı da final durumu düşüremez/not yazamaz
+  const m = await svc2.markTechError(id, "geç kalan hata (yarış)");
+  assert.equal(m.skipped, "final");
+  const r2 = await store.get("reports", id);
+  assert.equal(r2.state, "onaylandi");
+  assert.equal(r2.last_tech_error, undefined);
+});
+
+// ── 18. markTechError expect koruması: durum/sürüm ilerlediyse yazım atlanır ──
+test("H18: expect {state,version} uyuşmazsa teknik hata yazımı SKIP olur", async () => {
+  const { svc, store } = await setup();
+  const inr = await svc.intakePacket(pkt());
+  // kayıt ilerletildi (ofis kontrole aldı) — gonderildi bekleyen geç kalan yazım atlanır
+  const r1 = await svc.startCheck(inr.report.id, OFIS, inr.report.version);
+  const m1 = await svc.markTechError(inr.report.id, "geç kalan not", { state: "gonderildi", version: 0 });
+  assert.equal(m1.skipped, "state");
+  const m2 = await svc.markTechError(inr.report.id, "geç kalan not", { version: 0 });
+  assert.equal(m2.skipped, "version");
+  const r = await store.get("reports", inr.report.id);
+  assert.equal(r.state, "kontrolde", "durum korunur");
+  assert.equal(r.last_tech_error, undefined, "not yazılmadı");
+  // beklenti güncelse not düşülür (durum tablosu izin vermediği için state değişmez, yalnız not)
+  const m3 = await svc.markTechError(inr.report.id, "güncel not", { state: "kontrolde", version: r1.version });
+  assert.equal(m3.skipped, null);
+  const r3 = await store.get("reports", inr.report.id);
+  assert.equal(r3.state, "kontrolde", "T10 yalnız gonderildi'den — kontrolde'de durum DEĞİŞMEZ");
+  assert.equal(r3.last_tech_error, "güncel not");
 });
 
 // ── 14. "Farklı kayıt olarak aç" eski anahtarı aşamaz ────────────────────────

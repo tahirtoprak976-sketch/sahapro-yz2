@@ -70,8 +70,13 @@ export const ERR = Object.freeze({
   CANCEL_BLOCKED: "CANCEL_BLOCKED",         // bağlı kesinleşmiş kayıt var — basit iptal yok
   LINK_UNKNOWN: "LINK_UNKNOWN",             // tanınmayan şoför bağlantısı
   LINK_REVOKED: "LINK_REVOKED",             // iptal edilmiş bağlantı
-  PACKET_INVALID: "PACKET_INVALID",         // zorunlu alanı eksik paket
+  LINK_EXPIRED: "LINK_EXPIRED",             // süresi dolmuş bağlantı
+  PACKET_INVALID: "PACKET_INVALID",         // zorunlu alanı eksik paket / SP1 kodu bulunamadı
   SAME_ACTOR: "SAME_ACTOR",                 // kontrolü yapan onaylayamaz (yapılandırma)
+  SP1_UNSIGNED: "SP1_UNSIGNED",             // imzasız SP1 paketi (lid/sig yok)
+  SP1_BAD_SIGNATURE: "SP1_BAD_SIGNATURE",   // imza bağlantı anahtarıyla uyuşmuyor (değiştirilmiş/eksik kod)
+  SP1_PERSONNEL_MISMATCH: "SP1_PERSONNEL_MISMATCH", // bağlantı başka personel adına, paket başka
+  ATTACHMENT_MISSING: "ATTACHMENT_MISSING", // gerekli ek (beyan edilen fotoğraf) tamamlanmadan kontrol kapanamaz
 });
 
 const fail = (code, detail) => ({ ok: false, code, detail: detail || "" });
@@ -114,17 +119,21 @@ export function canonicalStringify(v) {
 
 // ---------------------------------------------------------------- parmak izi sözleşmesi
 // Fingerprint girdileri YALNIZCA bunlardır:
-//   1) fields      — iş içeriği (tarih, müşteri, şantiye, araç, miktar, birim fiyat...)
-//   2) rawText     — ham kaynak metin
+//   1) fields      — ofisin gördüğü iş içeriği (tarih, müşteri, şantiye, araç, miktar...)
+//   2) entry       — kaynağın ilettiği HAM kayıt nesnesi (SP1 paketindeki entry'nin kendisi;
+//                    manuel alımda null). Entry = iş içeriği; ZARF (paket/envelope) DEĞİL.
 //   3) attachments — eklerin İÇERİK hash'leri (SHA-256 hex), SIRALI liste — ek sırası da içeriktir
 // Kimlik (tenant/linkId/entryId) fingerprint'e GİRMEZ — o kapsam op-key'de zaten var.
-// Taşıma bilgisi (alınma/gönderim zamanı, yeniden gönderim sayısı, kanal meta'sı) fingerprint'e
-// GİRMEZ: yeniden gönderim içeriği değiştirmez; dahil edilseydi sahte OP_CONFLICT üretirdi.
-// Tersi de zorunludur: miktar/müşteri/EK İÇERİĞİ değişimi aynı op-id ile SESSİZCE kabul EDİLMEZ
-// (fingerprint değişir → OP_CONFLICT).
+// ZARF fingerprint'e GİRMEZ: aynı işin başka bir SP1 paketinde (farklı paket kodu, farklı
+// okunur metin, yanında başka kayıtlarla) yeniden gönderilmesi içerik değişikliği DEĞİLDİR —
+// dahil edilseydi sahte OP_CONFLICT üretirdi. Zarf kanıtları ayrı modellenir (sources store;
+// aynı rapora birden çok zarf ilişkilenebilir). Taşıma bilgisi (alınma/gönderim zamanı,
+// yeniden gönderim sayısı, kanal meta'sı) da GİRMEZ.
+// Tersi de zorunludur: aynı entry kimliğiyle miktar/müşteri/EK İÇERİĞİ değişimi SESSİZCE kabul
+// EDİLMEZ (fingerprint değişir → OP_CONFLICT).
 // NOT: hash yalnız bütünlük karşılaştırmasıdır — yetkilendirme veya değişmezlik garantisi DEĞİLDİR.
-export function fingerprintPayload({ fields, rawText, attachmentHashes = [] }) {
-  return canonicalStringify({ attachments: attachmentHashes, fields: fields || {}, rawText: rawText || "" });
+export function fingerprintPayload({ fields, entry = null, attachmentHashes = [] }) {
+  return canonicalStringify({ attachments: attachmentHashes, entry, fields: fields || {} });
 }
 
 // Aynı/farklı içerik kararı:
@@ -159,6 +168,14 @@ export function canTransition(report, to, actor, config = {}, opts = {}) {
   if (!t) return fail(ERR.TRANSITION_DENIED, report.state + " → " + to + " tanımsız");
   if (!t.roles.includes(actor.role)) return fail(ERR.ROLE_DENIED, actor.role + " rolü " + t.id + " geçişini yapamaz");
   if (t.reason && !(opts.reason && String(opts.reason).trim())) return fail(ERR.REASON_REQUIRED, t.id + " için gerekçe zorunlu");
+  // T3 (kontrol tamam → onay_bekliyor): kaynağın beyan ettiği ekler (ör. fiş/fotoğraf sayısı)
+  // tamamlanmadan iş onaya HAZIR SAYILMAZ. Eşleştirme kullanıcı onayı ister — fotoğraf sırası
+  // tek başına kesin iş eşleştirmesi değildir.
+  if (t.id === "T3" && report.media && report.media.required > 0) {
+    const m = report.media;
+    if (!m.confirmed || (m.attached || 0) < m.required)
+      return fail(ERR.ATTACHMENT_MISSING, "Gerekli ek eksik: beyan " + m.required + ", bağlı " + (m.attached || 0) + (m.confirmed ? "" : ", eşleşme onayı yok"));
+  }
   if (t.id === "T8") {
     if (!report.check || report.check.revoked) return fail(ERR.CHECK_STALE, "Geçerli ofis kontrolü yok");
     if (report.check.rev_no !== report.rev_no) return fail(ERR.REV_MISMATCH, "Kontrol eski revizyona ait (r" + report.check.rev_no + " ≠ r" + report.rev_no + ")");

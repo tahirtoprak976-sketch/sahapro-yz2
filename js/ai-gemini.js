@@ -1,3 +1,4 @@
+import { guardedAiFetch } from "./ai-guard.js";
 // Gemini (Google) bağlantısı. Anahtar yalnız bu telefonda (IndexedDB meta) saklanır ve doğrudan
 // Google'a gönderilir; araya başka sunucu girmez. Kullanıcı açıkça onay vermeden çağrı yapılmaz.
 // Çıktılar ai-assist.js içinde doğrulanır; burada kayıt yazılmaz.
@@ -11,19 +12,38 @@ export async function geminiSettings(db) {
     db.metaGet("gemini_model"),
     db.metaGet("gemini_consent"),
   ]);
-  return { key: key || "", model: model || "", consent: !!consent, ready: !!(key && model && consent) };
+  return { key: key || "", model: model || "", consent: consent === true, ready: !!(key && model && consent === true) };
 }
 
 async function call(path, key, body, fetchFn = fetch) {
-  const res = await fetchFn(BASE + path, {
-    method: body ? "POST" : "GET",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  let data = null;
+  const payload = body ? JSON.stringify(body) : undefined;
+  if (payload && new TextEncoder().encode(payload).byteLength > 16 * 1024 * 1024)
+    throw Error("AI isteği çok büyük; dosyaları ayrı gönderin");
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 45000);
+  let res, data;
   try {
-    data = await res.json();
-  } catch {}
+    res = await fetchFn(BASE + path, {
+      method: body ? "POST" : "GET", signal: controller.signal,
+      headers: { "Content-Type": "application/json", "x-goog-api-key": key }, body: payload,
+    });
+    if (res.body?.getReader) {
+      const reader = res.body.getReader(), decoder = new TextDecoder();
+      let total = 0, value = "";
+      while (true) {
+        const part = await reader.read();
+        if (part.done) break;
+        total += part.value.byteLength;
+        if (total > 4 * 1024 * 1024) { await reader.cancel(); throw Error("AI yanıt boyutu sınırı aşıldı"); }
+        value += decoder.decode(part.value, {stream:true});
+      }
+      value += decoder.decode();
+      try { data = JSON.parse(value); } catch { throw Error("AI geçerli JSON yanıtı vermedi"); }
+    } else { data = await res.json(); }
+  } catch (error) {
+    if (controller.signal.aborted) throw Error("AI isteği zaman aşımına uğradı; yerel akış kullanılabilir");
+    throw error;
+  } finally { clearTimeout(timer); }
   if (!res.ok) {
     const msg = data?.error?.message || "HTTP " + res.status;
     if (res.status === 429) {
@@ -70,20 +90,21 @@ function rank(id) {
   return r;
 }
 
-// ---- Ücretsiz kullanım: otomatik model değiştirme + günlük sayaç ----
+// ---- İzinli kullanım: model geri dönüşü + istek bazlı sınır ----
 // Seçili model "kota 0 / kapatıldı / yoğun / kota doldu" hatası verirse listedeki sıradaki ücretsiz
-// modele kendiliğinden geçer; çalışanı kaydeder. Faturalandırma hiçbir zaman açılmaz.
+// modele geçebilir; çalışanı kaydeder. Ücretsiz model garantisi vermez; ücret sağlayıcı hesabına bağlıdır.
 const SWITCHABLE = new Set(["NO_FREE", "MODEL_GONE", "BUSY", "RATE"]);
 export async function withModelFallback(db, run, { fetchFn, onSwitch } = {}) {
   const g = await geminiSettings(db);
   if (!g.ready) throw new Error("Gemini ayarları eksik (Ayarlar → Yapay Zeka)");
+  const guardedFetch = guardedAiFetch(db, fetchFn || fetch);
   const tried = new Set();
   let model = g.model, lastErr = null;
   let pool = null;
   for (let attempt = 0; attempt < 5; attempt++) {
     tried.add(model);
     try {
-      const out = await run({ key: g.key, model, fetchFn });
+      const out = await run({ key: g.key, model, fetchFn: guardedFetch });
       await countUse(db, model);
       if (model !== g.model) {
         await db.metaSet("gemini_model", model);
@@ -95,7 +116,7 @@ export async function withModelFallback(db, run, { fetchFn, onSwitch } = {}) {
       if (!SWITCHABLE.has(e.code)) throw e;
       if (!pool) {
         const cached = (await db.metaGet("gemini_model_list")) || [];
-        pool = cached.length ? cached : (await listModels(g.key, fetchFn).catch(() => [])).map((m) => m.id);
+        pool = cached.length ? cached : (await listModels(g.key, guardedFetch).catch(() => [])).map((m) => m.id);
         if (!cached.length && pool.length) await db.metaSet("gemini_model_list", pool);
       }
       const next = pool.find((id) => !tried.has(id));
@@ -103,7 +124,7 @@ export async function withModelFallback(db, run, { fetchFn, onSwitch } = {}) {
       model = next;
     }
   }
-  throw lastErr || new Error("Çalışan ücretsiz model bulunamadı");
+  throw lastErr || new Error("Çalışan model bulunamadı");
 }
 async function countUse(db, model) {
   try {

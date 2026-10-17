@@ -3,7 +3,7 @@
 
 export const APP_ID = "SAHAPRO_SOLO";
 export const LEGACY_APP_IDS = ["SAHAPRO_CEP"];
-export const APP_VERSION = "SAHAPRO YZ2 v1.0"; // bağımsız kopya: orijinalinden ayrı sürüm adı (karışma testi: Daha Fazla ekranından görülür)
+export const APP_VERSION = "SAHAPRO YZ2 v1.1"; // bağımsız kopya (v3.9.02 güvenlik paketi tabanlı) — karışma testi: Daha Fazla ekranından görülür
 export const SCHEMA_VERSION = 5;
 export const SOURCE = "SAHAPRO_SOLO";
 export const LEGACY_SOURCES = ["temporary_mobile_logger"];

@@ -1,0 +1,49 @@
+2026-10-17|v3.9.02: KDV/onay ve tarihli fiyat kapıları; şoför imzasında fail-closed; sır içeren yedekte zorunlu şifreleme; yerel kanıtlı AI raporu; atomik günlük istek sayacı ve boyut/zaman sınırı. Ayrıntılar docs/GUVENLIK-v3.9.02.md.
+2026-10-17|v3.9.01: Ayrı şoför uygulaması (sofor.html) — iPhone ana ekran simgesi doğrudan şoför ekranını açar, yönetici ekranları hiç yüklenmez; eski adr
+2026-10-17|v3.9.00: Güvenlik ve Yetki — yönetici kilidi (PBKDF2, parmak izi/Face ID, boşta/arka plan kilidi, hatalı denemede bekleme), hassas işlemlerde yeniden ş
+2026-10-17|v3.8.08: iPhone şoför bağlantısı — ana ekran uygulamasında 'Bu telefonu kim kullanacak?' (şoför bağlantı yapıştırır), iOS'ta bağlantı adreste
+2026-10-17|v3.8.07: İzin Talep ve Onay Formu (telefonda imza, onay/red, tek sayfa kurumsal PDF, yazdır/paylaş, ıslak imzalı nüsha); yedek geri yükleme: depo/esnaf/
+2026-10-17|v3.8.06: Şoför kaydında eksik fotoğraf asistan ekranından eklenir, kayıt fotoğrafla yeniden hazırlanır
+2026-10-17|v3.8.05: İzinler ekranı — yıllık izin hakkı (İş K. md.53), kullanılan/kalan, tarih aralığıyla izin, türler (yıllık/ücretsiz/mazeret/rapor); ü
+2026-10-17|v3.8.04: Depo litre fiyatı KDV dahil (toplam ÷ litre); eski hatalı girişler ve onunla maliyetlenen yakıtlar otomatik düzeltilir; tek fotoğrafta fatura e
+2026-10-17|v3.8.03: Depo girişi ayrıntısı (fatura bilgisi + fotoğraf aç/ekle), döküm faturasını aç, belgede resim önizleme
+2026-10-16|v3.8.02: Gemini 'invalid argument' düzeltmesi — şablon küçültüldü, reddedilirse şablonsuz tekrar denenir
+2026-10-16|v3.8.01: Geçmiş dönem döküm faturası 'ödenmiş say' (giderlerde görünür, iki kez maliyet olmaz); fatura varsa döküm hesabı faturaya göre
+2026-10-16|v3.8.00: Döküm sahası faturası (İSTAÇ vb.) gider değil döküm hesabına bağlanır; saha yer adından/VKN'den bulunur; ton/fiyat mutabakatı, faturaya 
+2026-10-16|v3.7.99: Yakıt faturasını elle girilmiş depo girişine bağla; mükerrer depo girişlerini birleştir
+2026-10-16|v3.7.98: Depo tankı yakıt faturası — depo girişi, fatura ayrıntısı, petrolcü kartı, veresiye borç, mükerrer kontrol
+2026-10-16|v3.7.97: Fiş/fatura ayrıntılı okuma (kalemler, no, ETTN, VKN, KDV) + faturadan bakım kaydı
+2026-10-16|v3.7.96: eLogo faturasını yükle (XML/ZIP telefonda, PDF Gemini) → müşteri ve işlerle eşleştir
+2026-10-16|v3.7.95: Faturalanacaklar (eLogo'ya hazır kalemler, tevkifat, faturalandı işareti)
+2026-10-16|v3.7.94: Fiyat sağlığı (katkı, zam önerisi) + gün sonunda tonaj ve mükerrer fiş kontrolü
+2026-10-16|v3.7.93: belgedeki plaka/bilgiler seçilen mevcut araca yazılır (Mobil Vinç)
+2026-10-16|v3.7.92: Döküm sahası ön ödemeli hesap (yatırılan, düşen, kalan, mutabakat)
+2026-10-16|v3.7.91: Nakit tahmini (5 hafta, iki senaryo, danışman yorumu)
+2026-10-16|v3.7.90: Günü kapat eksik avcısı + fotoğraf küçültme
+2026-10-16|v3.7.89: Detaylı raporlar — her kalem için tüm kayıtlar ve kurumsal PDF
+2026-10-16|v3.7.88: sıkıştırılmış ve şifreli yedek (.sahapro)
+2026-10-16|v3.7.87: şoför mesajı kısa (imza çizgi verisi), WhatsApp kesmesin; kesik kod uyarısı
+2026-10-16|v3.7.86: şoför dijital fişleri Fişler ekranında; kayıttan sonra 'Dijital fişi gör'
+2026-10-16|v3.7.85: mükerrer belgeleri birleştir, aynı belge ikinci kez eklenmesin
+2026-10-16|v3.7.84: personel ve şirket evrakından da kart aç/güncelle
+2026-10-16|v3.7.83: muayene belgesinden kayıtlı aracın kartını gerçek bilgilerle güncelle
+2026-10-16|v3.7.82: muayene/ruhsat belgesinden kayıtlı olmayan aracı otomatik ekle (Yarı Römork, Binek…)
+2026-10-16|v3.7.81: Asistan gider kartında ödeme şekli (nakit, kart, havale, personel cebinden)
+2026-10-16|v3.7.80: Şoför fotoğrafları eklenmediyse asistan uyarır ve nasıl alınacağını söyler
+2026-10-16|v3.7.79: İmza şoför mesajının kodunun içinde — patron kopyala-yapıştır yapsa da imzalı fiş gelir
+2026-10-16|v3.7.78: İmzalı dijital fiş patrona da düşer — imza iş kaydına eklenir, iş detayından aynı PDF
+2026-10-16|v3.7.77: Güncelleme onarımı — yeni sürüm kurulurken dosyalar HTTP önbelleğinden değil internetten taze indirilir
+2026-10-16|v3.7.76: Şoför dijital iş fişi — şantiye şefi telefonda imzalar, numaralı PDF WhatsApp'tan gider; fiş no patrona
+2026-10-16|v3.7.75: Şoför ekranı — nakliye işine geçince birim sefere döner; nakliye saatle girilirse sorar
+2026-10-16|v3.7.74: Şoför ekranı — arıza/bakım ve gider girişi; cebinden ödenen masraf maaşla iade
+2026-10-16|v3.7.73: Yeni sürüm uygulamaya her dönüşte ve 30 dakikada bir aranır; Ayarlar'da Güncellemeyi denetle
+2026-10-16|v3.7.72: Ayarlar — Tam Yedek kartı başlığın üstüne düşmüyor, Yedekleme bölümünün altında
+2026-10-16|v3.7.71: Modül geliştirmeleri — kabul edilen teklif fiyat listesine, cevapsız teklif ve ay sonu maaş hatırlatması, WhatsApp sonraki gün, toplu bakım 
+2026-10-16|v3.7.70: Şoför ekranı — şoför kendi telefonundan iş/mazot/fiş girer, WhatsApp ile kodlu gönderir; asistan Gemini'siz birebir alır
+2026-10-16|v3.7.69: Bakım Takvimi — araç başı km/saat/gün kuralları, kalan ve tahmini gün, Yapıldı, uyarılar
+2026-10-15|v3.7.68: Puantaj ve Maaş — gün gün puantaj, maaş hesabı, ayı kapat ve öde, masrafa bir kez
+2026-10-15|v3.7.67: WhatsApp grubu toplu işleme — dışa aktarım (.zip/.txt), yalnız yeni mesajlar, gün gün asistana
+2026-10-15|v3.7.66: Mazotla ödenen işler TL gelir, müşterinin verdiği mazot TL masraf sayılmaz; litre ile izlenir
+2026-10-15|v3.7.65: Teklif Asistanı — maliyet, geçmiş fiyat, önerilen fiyat, zarar sınırı, PDF teklif
+2026-10-15|v3.7.64: Depodan çıkışta döküm maliyeti elle; boşsa maliyet yok
+2026-10-15|v3.7.63: Depo kâr-zarar satır satır; mazotla ödenen giriş değeri; eksik kayıtlar işaretli

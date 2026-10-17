@@ -12,14 +12,15 @@ import {
   mergePreview,
   isValidBackup,
 } from "./core.js";
-const SECRET_META = ["gemini_key", "backup_pw", "sec_lock", "sec_fail"];
+const SECRET_META = ["gemini_key", "gemini_consent", "backup_pw", "sec_lock", "sec_fail"];
 // Yedek dosyasını oku: eski .json, sıkıştırılmış ya da şifreli .sahapro (şifre sorulur)
 export async function readBackupFile(file) {
   const { decodeBackup } = await import("./backup-crypt.js");
   const { promptDialog } = await import("./ui.js");
+  if (file.size > 64 * 1024 * 1024) throw Error("Yedek dosyası 64 MB sınırını aşıyor");
   return decodeBackup(new Uint8Array(await file.arrayBuffer()), () => promptDialog("Şifreli yedek", "Yedek şifresi", "", { type: "password" }));
 }
-export async function fullBackup(db) {
+export async function fullBackup(db, { includeDriverSecrets = false } = {}) {
   const data = await db.dumpAll(),
     attachments = [];
   for (const a of await db.getAll("attachments")) {
@@ -38,7 +39,8 @@ export async function fullBackup(db) {
     data,
     attachments,
     // API anahtarı gibi gizli ayarlar yedek dosyasına yazılmaz (yedek WhatsApp/Drive ile paylaşılabilir)
-    meta: (await db.getAll("meta")).filter((m) => !SECRET_META.includes(m.key)),
+    security: { driver_credentials: includeDriverSecrets ? "included-encryption-required" : "excluded" },
+    meta: (await db.getAll("meta")).filter((m) => !SECRET_META.includes(m.key) && (includeDriverSecrets || m.key !== "driver_links")),
   };
 }
 export async function previewBackup(db, obj) {
@@ -75,7 +77,7 @@ export async function previewBackup(db, obj) {
 }
 export async function restoreBackup(db, obj, replace = false) {
   const preview = await previewBackup(db, obj),
-    old = await fullBackup(db);
+    old = await fullBackup(db, { includeDriverSecrets: true });
   await saveRecovery(db, old);
   validateRestoreLinks(await db.dumpAll(), obj, preview, replace);
   const decoded = [];
@@ -131,7 +133,7 @@ export async function restoreBackup(db, obj, replace = false) {
             value: Math.max(Number(q.result?.value) || 0, Number(m.value) || 0),
           });
       } else if (
-        !["device_install_id", "pin_hash", "last_backup_at", "sec_lock", "sec_fail"].includes(m.key)
+        !["device_install_id", "pin_hash", "last_backup_at", ...SECRET_META].includes(m.key)
       ) {
         const q = t.objectStore("meta").get(m.key);
         q.onsuccess = () => {
@@ -166,10 +168,10 @@ export async function backupBeforeSoloOperation(
   db,
   prefix = "before-solo-operation",
 ) {
-  await saveRecovery(db, await fullBackup(db), prefix);
+  await saveRecovery(db, await fullBackup(db, { includeDriverSecrets: true }), prefix);
 }
 export async function backupBeforeHistoryImport(db) {
-  const snapshot = await fullBackup(db);
+  const snapshot = await fullBackup(db, { includeDriverSecrets: true });
   await saveRecovery(db, snapshot, "before-history-import");
 }
 async function saveRecovery(db, obj, prefix = "before-restore") {

@@ -1,3 +1,4 @@
+import { confirmedManualPrice, confirmedRulePrice } from "./assistant-price.js";
 // Asistan ekranı: mesaj yaz/yapıştır + fiş fotoğrafı ekle → Gemini işletmeni tanıyarak işleri,
 // giderleri, yakıtı çıkarır → doğrulanmış kartlar → tek dokunuşla kaydet. Yeni müşteri/şantiye,
 // fişin fotoğrafı ve kaynak mesaj kayda birlikte yazılır. Doğrulamadan geçmeyen satır işaretsiz gelir.
@@ -60,6 +61,18 @@ export async function screen(ctx) {
       .join("");
     for (const b of qsa("[data-rm]", box)) b.addEventListener("click", () => { files.splice(Number(b.dataset.rm), 1); showThumbs(); });
   };
+  qs("[data-out]", root).addEventListener("input", (event) => {
+    if (!event.target.matches('[name="unit_price"],[name="price"],[name="valid_from"],[name="manual_vat_rate"],[name="quantity"]')) return;
+    const card = event.target.closest('[data-kind="work"], [data-kind="price"]');
+    const check = card?.querySelector('[name="manual_price_confirmed"]');
+    if (check) check.checked = false;
+  });
+  qs("[data-out]", root).addEventListener("change", (event) => {
+    if (!event.target.matches('[name="manual_vat_basis"],[name="manual_vat_rate"],[name="unit_price"],[name="price"],[name="valid_from"],[name="scope"],[name="quantity"],[name="customer"],[name="site"],[name="vehicle"],[name="date"],[name="work_type"],[name="unit"]')) return;
+    const card = event.target.closest('[data-kind="work"], [data-kind="price"]');
+    const check = card?.querySelector('[name="manual_price_confirmed"]');
+    if (check) check.checked = false;
+  });
   photosIn.addEventListener("change", () => {
     files = [...files.filter((f) => f._rec), ...photosIn.files].slice(0, 10);
     showThumbs();
@@ -157,6 +170,7 @@ export async function screen(ctx) {
       const drvPayloads = drvSec.filter((x) => !x.reject).map((x) => x.p);
       const drvRejected = drvSec.filter((x) => x.reject), drvSecWarn = drvSec.filter((x) => x.warn);
       const drvRest = drvAll.length ? drv.stripDriverBlocks(message) : message;
+      if (drvRejected.length) throw new Error("Şoför paketi reddedildi: " + drvRejected.map(x => x.reject).join(" · ") + ". Geçersiz kodun yazısı AI ile alternatif kayıt yoluna gönderilmedi.");
       if (drvAll.length && !drvPayloads.length && drvRest.replace(/[^\p{L}\d]/gu, "").length <= 8 && !audios.length)
         throw new Error("Şoför mesajı işlenmedi: " + drvRejected.map((x) => `${x.p.n || "şoför"} — ${x.reject}`).join(" · ") + ". Güvenlik ekranından bağlantıyı kontrol edin; gerekiyorsa şoföre yeni bağlantı gönderin.");
       // Kod var ama açılmıyor: mesaj WhatsApp'ta / kopyalarken kesilmiş. Yazıdan okunursa dijital fiş ve imza kaybolur.
@@ -316,7 +330,7 @@ function render(ctx, out, v, d, { message, files, ms }) {
   out.innerHTML =
     `<div class="section-title">Asistanın bulduğu (${total}) · ${(ms / 1000).toFixed(1)} sn</div>` +
     summaryHtml(v, d) +
-    (v.asked ? v.askedHtml : v.answer ? `<div class="card"><div class="strong small">🤖 Cevap</div><div style="white-space:pre-wrap;margin-top:6px">${esc(v.answer)}</div>${v.answerBad.length ? notice("warn", "Bu sayılar kayıtlarınızda bulunamadı, güvenmeyin: " + v.answerBad.join(", ")) : '<div class="muted tiny" style="margin-top:6px">Rakamlar telefondaki kayıtlarınızdan hesaplandı.</div>'}</div>` : "") +
+    (v.asked ? v.askedHtml : v.answer ? `<div class="card"><div class="strong small">🤖 AI yorumu — doğrulanmış hesap değildir</div><div style="white-space:pre-wrap;margin-top:6px">${esc(v.answer)}</div>${v.answerBad.length ? notice("warn", "Bu sayılar kayıtlarınızda bulunamadı, güvenmeyin: " + v.answerBad.join(", ")) : '<div class="muted tiny" style="margin-top:6px">Bu serbest yorumun anlam doğruluğu garanti edilmez. Sayısal kararlar için Soru Sor veya yerel raporu kullanın.</div>'}</div>` : "") +
     (v.driverNote ? notice("ok", "📋 " + v.driverNote) : "") +
     (v.driverReject ? notice("danger", "🚫 İŞLENMEDİ — " + v.driverReject.map(esc).join(" · ") + ". Güvenlik ekranından bağlantıyı kontrol edin.") : "") +
     (v.driverSecWarn ? notice("warn", "🛡 " + v.driverSecWarn.map(esc).join(" · ")) : "") +
@@ -360,7 +374,7 @@ function render(ctx, out, v, d, { message, files, ms }) {
           <div class="field"><label>Malzeme</label><input name="material" value="${esc(r.material || "")}" placeholder="moloz, kum, mıcır…"></div>
           <div class="field"><label>Malzeme ocağı</label><select name="quarry">${opt([...quarries, ...(r.new_quarry ? [["new:" + r.new_quarry, "➕ Yeni ocak: " + r.new_quarry]] : [])], r.quarry_id || (r.new_quarry ? "new:" + r.new_quarry : ""), "— yok —")}</select></div>
           <div class="field"><label>Döküm / dolgu yeri</label><select name="dump_site">${opt([...dumpSites, ...(r.new_dump_site ? [["new:" + r.new_dump_site, "➕ Yeni döküm yeri: " + r.new_dump_site]] : [])], r.dump_site_id || (r.new_dump_site ? "new:" + r.new_dump_site : ""), "— yok —")}</select></div>
-          <div class="field"><label>Birim fiyat (₺, boşsa fiyat listesi)</label><input type="number" step="any" name="unit_price" value="${r.unit_price ?? ""}"></div>
+          <div class="field"><label>Birim fiyat (₺, boşsa fiyat listesi)</label><input type="number" step="any" name="unit_price" value="${r.unit_price ?? ""}"></div><div class="field"><label>Manuel fiyatın KDV durumu</label><select name="manual_vat_basis"><option value="">— seçin —</option><option value="excluded">KDV hariç</option><option value="included">KDV dahil</option></select></div><div class="field"><label>Manuel fiyat KDV oranı (%)</label><input type="number" min="0" max="100" step="any" name="manual_vat_rate" placeholder="Oranı doğrulayın; 0 da seçilebilir"></div><label class="history-check"><input type="checkbox" name="manual_price_confirmed"> Manuel fiyat, KDV oranı ve dahil/hariç durumunu bu iş için doğruladım.</label>
           <div class="field"><label>Alındığı yer</label><input name="from_place" value="${esc(r.from_place || "")}" placeholder="ocak / saha"></div>
           <div class="field"><label>Teslim yeri</label><input name="to_place" value="${esc(r.to_place || "")}" placeholder="şantiye / dolgu"></div>
           <div class="field"><label>Fiş no</label><input name="slip_no" value="${esc(r.slip_no || "")}"></div>
@@ -535,10 +549,10 @@ function render(ctx, out, v, d, { message, files, ms }) {
           <div class="field"><label>Müşteri</label><select name="customer">${opt([...customers, ...(r.new_customer ? [["new:" + r.new_customer, "➕ Yeni: " + r.new_customer]] : [])], r.customer_id || (r.new_customer ? "new:" + r.new_customer : ""), "— tüm müşteriler —")}</select></div>
           <div class="field"><label>Kapsam</label><select name="scope">${r.scopes.map((s, j) => `<option value="${j}">${esc(s.label)}</option>`).join("")}</select></div>
           <div class="field"><label>Birim</label><select name="unit">${opt(ASSIST_UNITS.map((u) => [u, u]), r.unit || "")}</select></div>
-          <div class="field"><label>Fiyat (₺, KDV hariç)</label><input type="number" step="any" name="price" value="${r.price ?? ""}"></div>
+          <div class="field"><label>Fiyat (₺)</label><input type="number" step="any" name="price" value="${r.price ?? ""}"></div><div class="field"><label>Geçerlilik başlangıcı</label><input type="date" name="valid_from"></div><div class="field"><label>Manuel fiyatın KDV durumu</label><select name="manual_vat_basis"><option value="">— seçin —</option><option value="excluded">KDV hariç</option><option value="included">KDV dahil</option></select></div><div class="field"><label>Manuel fiyat KDV oranı (%)</label><input type="number" min="0" max="100" step="any" name="manual_vat_rate" placeholder="Oranı doğrulayın; 0 da seçilebilir"></div><label class="history-check"><input type="checkbox" name="manual_price_confirmed"> Manuel fiyat, KDV oranı ve dahil/hariç durumunu bu iş için doğruladım.</label>
         </div>
         <div data-scopeinfo class="small" style="margin-top:4px"></div>
-        <label class="history-check small"><input type="checkbox" name="apply_unpriced" checked> Fiyatı boş eski işlere uygula <span data-n-unpriced class="muted"></span></label>
+        <label class="history-check small"><input type="checkbox" name="apply_unpriced"> Fiyatı boş eski işlere uygula <span data-n-unpriced class="muted"></span></label>
         <label class="history-check small"><input type="checkbox" name="apply_differ"> Farklı fiyatlı eski işleri de bu fiyata çevir <span data-n-differ class="muted"></span></label>
         ${issues(r)}</div>`)
       .join("") +
@@ -568,7 +582,7 @@ function render(ctx, out, v, d, { message, files, ms }) {
       qs("[data-n-unpriced]", card).textContent = same ? `(${s.unpriced} iş)` : "";
       qs("[data-n-differ]", card).textContent = same ? `(${s.differ} iş)` : "";
       qs("[data-scopeinfo]", card).innerHTML = [
-        s.existing ? `Mevcut kural: <b>${fmtTL(s.existing.price)} ₺</b> → yeni fiyatla güncellenecek` : "Yeni kural eklenecek",
+        s.existing ? `Mevcut kural: <b>${fmtTL(s.existing.price)} ₺</b>. Yeni tarih eski kuralı silmez; aynı tarihli kural güncellenebilir.` : "Yeni tarihli kural eklenecek",
         s.locked ? `<span class="muted">${s.locked} iş hakedişe girdiği için değişmez</span>` : "",
       ].filter(Boolean).join(" · ");
     };
@@ -619,6 +633,16 @@ async function save(ctx, out, v, d, { message, files }) {
     if (need > have + 0.001)
       return toast(`Depoda kayıtlı ${Math.round(have)} L var, ${need} L verilmek isteniyor. Önce depoya yakıt girişi yapın (mesaja "depoya X litre geldi" yazabilirsiniz) ya da kaynağı İstasyon seçin.`, "err");
   }
+  // Tüm manuel fiyatları ilk yazımdan önce doğrula: sonraki satırdaki hata önceki işi kaydetmesin.
+  try {
+    for (const c of cards.filter(c => c.dataset.kind === "price")) confirmedRulePrice({price:val(c,"price"),vatRate:val(c,"manual_vat_rate"),basis:val(c,"manual_vat_basis"),confirmed:c.querySelector('[name="manual_price_confirmed"]')?.checked===true,validFrom:val(c,"valid_from")});
+    for (const c of cards.filter(c => c.dataset.kind === "work")) {
+      const price = val(c, "unit_price");
+      if (String(price).trim() !== "") confirmedManualPrice({price, quantity: val(c, "quantity"),
+        vatRate: val(c, "manual_vat_rate"), basis: val(c, "manual_vat_basis"),
+        confirmed: c.querySelector('[name="manual_price_confirmed"]')?.checked === true});
+    }
+  } catch (error) { return toast(error.message, "err"); }
   const btn = qs("[data-save]", out);
   btn.disabled = true;
   const batchWorks = {};
@@ -711,7 +735,7 @@ async function save(ctx, out, v, d, { message, files }) {
         const s = r.scopes[Number(val(c, "scope")) || 0];
         const cust = val(c, "customer") ? await ensureCustomer(val(c, "customer")) : null;
         const rule = { customer_id: cust, site_id: cust === r.customer_id ? r.site_id : null, work_type: s.work_type, vehicle_id: s.vehicle_id,
-          unit: val(c, "unit"), price: Number(val(c, "price")), kdv_rate: 20, kdv_included: false, valid_from: null };
+          unit: val(c, "unit"), ...confirmedRulePrice({price:val(c,"price"),vatRate:val(c,"manual_vat_rate"),basis:val(c,"manual_vat_basis"),confirmed:c.querySelector('[name="manual_price_confirmed"]')?.checked===true,validFrom:val(c,"valid_from")}) };
         let fresh = await db.dumpAll();
         const old = pr.sameRule(fresh, rule);
         const rec = old
@@ -933,6 +957,12 @@ async function save(ctx, out, v, d, { message, files }) {
         continue;
       }
       if (k === "work") {
+        // Finans kapısı yeni müşteri/şantiye/ocak yazımından ÖNCE çalışır.
+        const priceRaw = val(c, "unit_price");
+        const manualSnapshot = String(priceRaw).trim() !== "" ? confirmedManualPrice({
+          price: priceRaw, quantity: val(c, "quantity"), vatRate: val(c, "manual_vat_rate"),
+          basis: val(c, "manual_vat_basis"), confirmed: c.querySelector('[name="manual_price_confirmed"]')?.checked === true,
+        }) : null;
         const customer = await ensureCustomer(val(c, "customer"), v.works[Number(c.dataset.i)].new_customer_parent_id || null);
         let site = val(c, "site") || null;
         if (site && site.startsWith("new:")) {
@@ -989,10 +1019,7 @@ async function save(ctx, out, v, d, { message, files }) {
           if (wr0.digital) dslipIds.push(wr0.driver_entry_id);
           if (wr0.digital) Object.assign(fields, { digital_slip_no: wr0.digital.no, slip_receiver: wr0.digital.receiver || "", slip_signed_at: wr0.digital.signed_at || null, slip_status: "Fiş Var", slip_no: fields.slip_no || wr0.digital.no });
         }
-        const up = Number(val(c, "unit_price"));
-        fields.price_snapshot = up > 0
-          ? { unit_price: up, kdv_rate: Number(await db.metaGet("kdv_default")) || 20, kdv_included: false, amount: up * fields.quantity, price_source: "Manuel", snapshot_at: new Date().toISOString() }
-          : priceSnapshot(fields, prices, crane);
+        fields.price_snapshot = manualSnapshot || priceSnapshot(fields, prices, crane);
         // Mazot karşılığı (Kılıç: sefer başı 75 L, ücret yalnız mazot) — kartta değişen müşteri/miktara göre yeniden hesaplanır
         { const dNow = await db.dumpAll(); Object.assign(fields, applyFuelPay(dNow, fields, message)); const { applyYard } = await import("./yard-core.js"); Object.assign(fields, applyYard(dNow, fields)); }
         const dup = existingWorks.some((w) => w.date === fields.date && w.vehicle_id === fields.vehicle_id && w.customer_id === fields.customer_id && w.work_type === fields.work_type && Number(w.quantity) === fields.quantity);

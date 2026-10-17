@@ -792,8 +792,8 @@ async function more(ctx) {
       ${items.map(([h, ic, t]) => `<button data-go="${h}" style="aspect-ratio:1.05"><span class="ic">${ic}</span>${t}</button>`).join("")}
     </div>
     <div class="card" style="margin-top:14px">
-      ${kv("Sürüm", "SAHAPRO YZ2 v1.0 — bağımsız kopya")}
+      ${kv("Sürüm", "SAHAPRO YZ2 v1.1 — bağımsız kopya · v3.9.02 güvenlik")}
       ${kv("Veri", "Yalnızca bu cihazda (IndexedDB)")}
-      ${kv("Bulut", "Bağlı değil — hiçbir veri gönderilmez")}
+      ${kv("Bulut", "Ortak senkron yok · Gemini seçilirse izinli veri gönderimi var")}
     </div>`;
 }

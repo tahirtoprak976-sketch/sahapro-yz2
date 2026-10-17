@@ -58,11 +58,9 @@ export async function screen(ctx) {
     b.disabled = true; out.innerHTML = '<div class="muted small" style="margin:6px">Gemini yazıyor…</div>';
     try {
       const facts = forecastSummary(F);
-      const { withModelFallback, geminiText } = await import("./ai-gemini.js");
-      const { keepVerified } = await import("./day-summary.js");
-      const txt = await withModelFallback(db, (o) => geminiText("Nakit tahmini (JSON):\n" + JSON.stringify(facts), { ...o, system: SYSTEM }));
-      const k = keepVerified(txt, facts);
-      out.innerHTML = `<div class="card" style="white-space:pre-wrap">${esc(k.text || "Doğrulanabilir bir yorum çıkmadı.")}</div>` + (k.dropped.length ? notice("warn", `${k.dropped.length} cümle kayıtlarda olmayan rakam içerdiği için çıkarıldı.`) : "");
+      const { requestEvidenceReport } = await import("./evidence-report.js");
+      const text = await requestEvidenceReport(db, facts, "Nakit tahminindeki önemli kanıtlar; kesin tahsilat vaadi verme");
+      out.innerHTML = `<div class="card" style="white-space:pre-wrap">${esc(text)}</div>`;
     } catch (e) { out.innerHTML = notice("warn", e.message || String(e)); }
     b.disabled = false;
   });

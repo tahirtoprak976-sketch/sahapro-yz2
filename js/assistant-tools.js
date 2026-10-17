@@ -1,3 +1,4 @@
+import { requestEvidenceReport, localEvidenceText } from "./evidence-report.js";
 // Akıllı Asistan ek ekranları: Gün Sonu Özeti (#/akilli-asistan/ozet) ve Soru Sor (#/akilli-asistan/soru).
 // Rakamlar telefonda hesaplanır; Gemini yalnız cümle kurar / hangi hesabın yapılacağını seçer.
 import { qs, esc, appbar, toast, notice, todayStr } from "./ui.js";
@@ -24,7 +25,7 @@ async function summary(ctx, g) {
         <button class="btn primary grow" data-share>📤 WhatsApp'ta paylaş</button>
         <button class="btn grow" data-copy>Kopyala</button>
       </div>
-      <div class="muted tiny" style="margin-top:6px">Düz özet internetsiz hazırlanır. Gemini metni güzelleştirir; kayıtlarda olmayan rakam içeren cümleler otomatik atılır.</div>
+      <div class="muted tiny" style="margin-top:6px">Düz özet internetsiz hazırlanır. Gemini önemli kanıtları seçer; etiketler ve değerler telefondan gelir.</div>
     </div>`;
   let facts = null;
   const text = qs("[data-text]", root), note = qs("[data-note]", root);
@@ -41,12 +42,8 @@ async function summary(ctx, g) {
     b.disabled = true;
     note.innerHTML = '<div class="muted small">Gemini yazıyor…</div>';
     try {
-      const { withModelFallback, geminiText } = await import("./ai-gemini.js");
-      const out = await withModelFallback(db, (o) => geminiText("Günün rakamları (JSON):\n" + JSON.stringify(facts), { ...o, system: SUMMARY_SYSTEM }));
-      const k = keepVerified(out, facts);
-      if (!k.text) throw new Error("Gemini doğrulanabilir bir özet yazamadı; düz özeti kullanın");
-      text.value = k.text + (facts.uyarilar.length ? "\n" + facts.uyarilar.slice(0, 4).map((u) => "⚠ " + u).join("\n") : "");
-      note.innerHTML = k.dropped.length ? notice("warn", `${k.dropped.length} cümle kayıtlarda olmayan rakam içerdiği için çıkarıldı.`) : "";
+      text.value = await requestEvidenceReport(db, facts, "Gün sonunun önemli kanıtlarını seç");
+      note.innerHTML = notice("info", "AI yalnız kanıt satırlarını seçti. Etiketler ve rakamlar telefondaki hesaplardan oluşturuldu.");
     } catch (e) {
       note.innerHTML = notice("warn", e.message || String(e));
     }
@@ -108,7 +105,9 @@ export async function askWithTools(db, q) {
   const fuelRefPrice = await db.metaGet("fuel_ref_price");
   const quoteSettings = (await db.metaGet("quote_settings")) || {};
   const res = await withModelFallback(db, (o) => geminiAsk(`Bugün: ${today}\n<soru>${String(q).replace(/<\/?soru>/gi, "")}</soru>`, { ...o, system: ASK_SYSTEM, tools: ASK_TOOLS, runTool: (n, a) => runAskTool(d, n, a, today, yardSettings, { collectNotes, fuelRefPrice, quoteSettings }) }));
-  return { ...res, bad: checkAnswer(res.answer, res.trace.map((t) => t.result)) };
+  // Modelin serbest cevabını doğrulanmış gibi göstermeyin: seçtiği araçların yerel sonuçlarını sunun.
+  const answer = res.trace.length ? res.trace.map(t => `${TOOL_TR[t.name] || t.name} · Parametreler: ${JSON.stringify(t.args)}\n${localEvidenceText(t.result)}`).join("\n\n") : "Yerel hesap yapılmadı. Soruyu müşteri, araç ve dönem belirterek yeniden sorun.";
+  return { ...res, answer, bad: [], evidenceOnly: true };
 }
 const TOOL_TR = { work_totals: "İş toplamı", customer_balance: "Müşteri bakiyesi", fuel_totals: "Yakıt toplamı", expense_totals: "Gider toplamı", collection_totals: "Tahsilat toplamı", esnaf_debt: "Esnaf borcu", tank_status: "Depo durumu", customer_fuel: "Mazot hesabı", yard_stock: "Depo stoku", receivables: "Alacaklar", vehicle_profit: "Araç kârlılığı", customer_profit: "Müşteri kârlılığı", price_check: "Fiyat kontrolü", business_review: "İşletme değerlendirmesi", quote_price: "Teklif hesabı", payroll_status: "Puantaj / maaş", maintenance_due: "Bakım takvimi" };
 export function answerHtml(res) {
@@ -170,13 +169,9 @@ async function advisor(ctx, g) {
       b.disabled = true;
       box.innerHTML = "Değerlendiriliyor…";
       try {
-        const { withModelFallback, geminiText } = await import("./ai-gemini.js");
-        const { keepVerified } = await import("./day-summary.js");
         const facts = { donem: label, ozet: R.ozet, bulgular: R.bulgular.map((x) => x.text), araclar: R.araclar.slice(0, 10).map(({ id, ...x }) => x), musteriler: R.musteriler.slice(0, 10).map(({ id, ...x }) => x), fiyat: R.fiyat.slice(0, 8) };
-        const out = await withModelFallback(db, (o) => geminiText("İşletme karnesi (JSON):\n" + JSON.stringify(facts), { ...o, maxTokens: 1500,
-          system: X.EXPERT_KNOWLEDGE + "\nSen bu işletmenin yönetim danışmanısın. Sahibine Türkçe, sade bir değerlendirme yaz: 1) Durum (2 cümle), 2) En önemli 3–5 öneri — her biri somut eylem (kimi ara, hangi aracı nereye ver, hangi müşteriye fiyat güncelle, hangi masrafı kes), 3) Dikkat (1 cümle). Yalnız JSON'daki rakam ve adları kullan; hesap yapma, rakam uydurma." }));
-        const v = keepVerified(String(out || ""), [facts]);
-        box.innerHTML = `<div style="white-space:pre-wrap;color:inherit">${esc(v.text || "Yorum çıkmadı.")}</div>${v.dropped.length ? `<div class="tiny muted" style="margin-top:6px">${v.dropped.length} cümle kayıtlarda olmayan rakam içerdiği için gösterilmedi.</div>` : ""}`;
+        const text = await requestEvidenceReport(db, facts, "İşletme değerlendirmesinde incelenecek önemli bulguları seç");
+        box.innerHTML = `<div style="white-space:pre-wrap;color:inherit">${esc(text)}</div><p class="muted tiny">Yerel rapor kanıtları; AI yeni tutar veya öneri metni yazmadı.</p>`;
       } catch (e) {
         box.innerHTML = esc(e.message || String(e));
       }

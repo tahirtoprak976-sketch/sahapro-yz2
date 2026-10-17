@@ -1,7 +1,8 @@
 // Versioned atomic app shell. Existing cached assets are never mixed with a new release.
-const CACHE = "yz2-solo-v1-20261017-kurulum-1";
+const CACHE = "yz2-solo-v1-20261017-guvenlik-1";
 const CDN_CACHE = "yz2-solo-cdn-v1";
 const ASSETS = [
+  "./js/assistant-price.js", "./js/ai-guard.js", "./js/evidence-report.js",
   "./",
   "./index.html",
   "./sofor.html",

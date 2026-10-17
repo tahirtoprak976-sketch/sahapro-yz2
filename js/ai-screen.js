@@ -1,3 +1,4 @@
+import { guardedAiFetch, aiBudgetStatus } from "./ai-guard.js";
 // "Yapay Zeka (deneysel)" ekranı: telefonda çalışan ücretsiz modeli indirme ve örnek mesajlarla deneme.
 // Bu ekran hiçbir kayıt oluşturmaz; yalnız önerileri ve doğrulama sonucunu gösterir.
 import { qs, esc, appbar, toast, confirmDialog, notice, kv } from "./ui.js";
@@ -30,9 +31,9 @@ export async function screen(ctx) {
   const { DEFAULT_RULES, effectiveRules } = await import("./assistant-rules.js");
   const rulesText = effectiveRules(await db.metaGet("assistant_rules"));
   root.innerHTML =
-    appbar("Yapay Zeka (deneysel)", "Telefonda çalışır · ücretsiz", { back: "#/ayarlar" }) +
+    appbar("Yapay Zeka (deneysel)", "Yerel model veya izinli bulut desteği", { back: "#/ayarlar" }) +
     `<div style="height:10px"></div>
-    ${notice("info", "Model telefonunuzda çalışır; mesajlar dışarı gönderilmez. İlk indirme yaklaşık 1 GB'tır — Wi-Fi'da yapın. Yapay zeka hiçbir kaydı kendisi oluşturmaz: yalnız kural motorunun anlayamadığı ifadelere miktar/birim/iş türü önerir; mesajda yazmayan sayı veya listede olmayan değer otomatik reddedilir.")}
+    ${notice("info", "Yerel model seçildiğinde model telefonunuzda çalışır. Gemini seçildiğinde gönderdiğiniz metin, görsel/ses ve ilgili işletme bağlamı Google hizmetine gider. İlk indirme yaklaşık 1 GB'tır — Wi-Fi'da yapın. Yapay zeka hiçbir kaydı kendisi oluşturmaz: yalnız kural motorunun anlayamadığı ifadelere miktar/birim/iş türü önerir; mesajda yazmayan sayı veya listede olmayan değer otomatik reddedilir.")}
     <div class="card">
       ${kv("WebGPU", gpu.ok ? "Var ✓" + (gpu.f16 ? " (f16)" : "") : "Yok — " + gpu.reason)}
       <div class="field" style="margin-top:8px"><label>Model</label><select data-model disabled><option>Liste yükleniyor…</option></select></div>
@@ -48,7 +49,7 @@ export async function screen(ctx) {
       <div class="muted small">Fiş fotoğrafı okumada en güçlü seçenek. Anahtarı <b>aistudio.google.com</b> → "Get API key" ile alın. Anahtar yalnız bu telefonda saklanır. Google Cloud'da anahtarı bu siteyle (HTTP referrer) ve "Generative Language API" ile sınırlamanız önerilir.</div>
       <div class="field" style="margin-top:8px"><label>API anahtarı</label><input type="password" data-gkey autocomplete="off" value="${esc(gem.key)}" placeholder="AIza…"></div>
       <div class="field"><label>Model</label><select data-gmodel>${gem.model ? `<option value="${esc(gem.model)}">${esc(gem.model)}</option>` : "<option value=''>Önce anahtarı girip modelleri getirin</option>"}</select></div>
-      <label class="history-check"><input type="checkbox" data-gconsent ${gem.consent ? "checked" : ""}> Gemini kullandığımda mesaj metninin veya fiş fotoğrafının Google'a gönderileceğini biliyorum.</label>
+      <label class="history-check"><input type="checkbox" data-gconsent ${gem.consent ? "checked" : ""}> Gemini kullandığımda metin, görsel/ses ve ilgili müşteri, personel, iş ve finans bağlamının Google hizmetine gönderilebileceğini; kullanımın sağlayıcı hesabıma göre ücretli olabileceğini biliyorum.</label>
       <div class="row" style="gap:8px;margin-top:8px">
         <button class="btn grow" data-gmodels>Modelleri Getir</button>
         <button class="btn grow" data-gfind>Çalışan Modeli Bul</button>
@@ -56,7 +57,7 @@ export async function screen(ctx) {
       </div>
       <button class="btn ghost block" style="margin-top:8px" data-gclear>Anahtarı Sil</button>
       <div class="muted small" style="margin-top:8px" data-gusage></div>
-      <div class="muted tiny">Ücretsiz kalmak için bu projeye faturalandırma (kart) eklemeyin. Seçili model ücretsiz kotası biterse veya kapatılırsa uygulama sıradaki ücretsiz modele kendiliğinden geçer.</div>
+      <div class="muted tiny">Ücretsiz kalmak için bu projeye faturalandırma (kart) eklemeyin. Seçili model yanıt vermezse listedeki başka model denenebilir. Modelin çalışması ücretsiz olduğunu kanıtlamaz. Yerel günlük istek sınırı retry ve model denemelerini de sayar.</div>
       <div class="field" style="margin-top:10px"><label>Fiş fotoğrafı ile dene</label><input type="file" accept="image/*" data-gphoto></div>
       <div data-gout></div>
     </div>
@@ -231,21 +232,33 @@ export async function screen(ctx) {
     if (!q || !q.cards || !el) return;
     el.insertAdjacentHTML("afterend", `<div class="muted small">Asistan doğruluğu (${esc(q.since)}'den beri ${q.cards} iş kartı): alanların %${Math.round((100 * q.changed) / (q.fields || 1))}'i elle düzeltildi · uyarısız (sessiz) hata %${Math.round((100 * q.silent) / (q.fields || 1))}</div>`);
   });
-  usageToday(db).then((u) => {
+  usageToday(db).then(async (u) => {
     const el = qs("[data-gusage]", root);
     const parts = Object.entries(u).map(([m, n]) => `${m}: ${n}`);
-    if (el) el.textContent = "Bugünkü Gemini isteği: " + (parts.length ? parts.join(" · ") : "0") + " (günlük ücretsiz sınırı AI Studio'da görünür)";
+    const budget = await aiBudgetStatus(db);
+    if (el) el.textContent = `Bugünkü HTTP denemesi: ${budget.attempts}/${budget.limit}. Başarılı işlemler: ` + (parts.length ? parts.join(" · ") : "0") + ". Bu parasal sınır değildir; sağlayıcı hesabınızdaki ücret ve kota ayarlarını kontrol edin.";
+    if (el) el.insertAdjacentHTML("afterend", `<div class="field"><label>Günlük AI HTTP denemesi sınırı (1–500)</label><input type="number" min="1" max="500" step="1" data-ai-limit value="${budget.limit}"></div><button class="btn" data-ai-limit-save>İstek Sınırını Kaydet</button>`);
+    qs("[data-ai-limit-save]", root)?.addEventListener("click", async () => {
+      const n = Number(qs("[data-ai-limit]", root).value);
+      if (!Number.isInteger(n) || n < 1 || n > 500) return toast("Sınır 1–500 tam sayı olmalı", "err");
+      await db.metaSet("ai_daily_request_limit", n); toast("İstek sınırı kaydedildi", "ok");
+    });
   });
   const gkey = qs("[data-gkey]", root), gmodel = qs("[data-gmodel]", root), gout = qs("[data-gout]", root);
+  qs("[data-gconsent]", root).addEventListener("change", async e => {
+    if (!e.target.checked) { await db.metaSet("gemini_consent", false); toast("Gemini izni kapatıldı; yeni istekler engellendi", "ok"); }
+  });
   qs("[data-provider]", root).addEventListener("change", (e) => {
     runBtn.disabled = e.target.value === "local" ? !ai.loaded() : false;
   });
   qs("[data-gmodels]", root).addEventListener("click", async () => {
     const key = gkey.value.trim();
     if (!key) return toast("Önce anahtarı girin", "err");
+    if (!qs("[data-gconsent]", root).checked) return toast("Model sorgulaması için veri gönderimi onayını işaretleyin", "err");
+    await db.metaSet("gemini_consent", true);
     gout.innerHTML = '<div class="muted small">Modeller alınıyor…</div>';
     try {
-      const list = await listModels(key);
+      const list = await listModels(key, guardedAiFetch(db));
       await db.metaSet("gemini_model_list", list.map((m) => m.id));
       const cur = gmodel.value;
       gmodel.innerHTML = list.map((m) => `<option value="${esc(m.id)}" ${m.id === cur ? "selected" : ""}>${esc(m.label)} (${esc(m.id)})</option>`).join("");
@@ -257,11 +270,13 @@ export async function screen(ctx) {
   qs("[data-gfind]", root).addEventListener("click", async () => {
     const key = gkey.value.trim();
     if (!key) return toast("Önce anahtarı girin", "err");
+    if (!qs("[data-gconsent]", root).checked) return toast("Model sorgulaması için veri gönderimi onayını işaretleyin", "err");
+    await db.metaSet("gemini_consent", true);
     gout.innerHTML = '<div class="muted small">Modeller tek tek deneniyor…</div>';
     try {
-      const list = await listModels(key);
+      const list = await listModels(key, guardedAiFetch(db));
       await db.metaSet("gemini_model_list", list.map((m) => m.id));
-      const r = await findWorkingModel(key, list);
+      const r = await findWorkingModel(key, list, guardedAiFetch(db));
       gmodel.innerHTML = list.map((m) => `<option value="${esc(m.id)}" ${m.id === r.id ? "selected" : ""}>${esc(m.label)} (${esc(m.id)})</option>`).join("");
       gout.innerHTML =
         (r.id

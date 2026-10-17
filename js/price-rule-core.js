@@ -62,7 +62,7 @@ export function pastWorksFor(d, rule) {
 }
 
 export function sameRule(d, rule) {
-  return live(d, "price_book").find((e) => e.active !== false && e.unit === rule.unit
+  return live(d, "price_book").find((e) => e.active !== false && (!rule.valid_from || (e.valid_from || null) === rule.valid_from) && e.unit === rule.unit
     && (e.customer_id || null) === (rule.customer_id || null) && (e.site_id || null) === (rule.site_id || null)
     && (e.work_type || null) === (rule.work_type || null) && (e.vehicle_id || null) === (rule.vehicle_id || null)
     && !e.vehicle_type && !e.vehicle_group && !e.material && e.distance_min == null && e.distance_max == null && !e.formula) || null;

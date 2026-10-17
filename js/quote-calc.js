@@ -193,15 +193,10 @@ export async function screen(ctx) {
     if (!last) return;
     b.disabled = true; box.innerHTML = '<div class="muted small">Gemini düşünüyor…</div>';
     try {
-      const { withModelFallback, geminiText } = await import("./ai-gemini.js");
-      const { keepVerified } = await import("./day-summary.js");
-      const { EXPERT_KNOWLEDGE } = await import("./expert-core.js");
+      const { requestEvidenceReport } = await import("./evidence-report.js");
       const facts = core.quoteSummary(d, last);
-      const out = await withModelFallback(db, (o) => geminiText("Teklif hesabı (JSON): " + JSON.stringify(facts), { ...o, maxTokens: 700,
-        system: EXPERT_KNOWLEDGE + "\nİşletme sahibi müşteriye fiyat verecek. Bu hesaba bakıp en çok 4 kısa madde yaz: fiyat uygun mu, pazarlık payı, nelere dikkat (eksik maliyet, döküm, vade/tahsilat riski). Yalnız JSON'daki rakamları kullan; rakam uydurma. Türkçe, sade." }));
-      const v = keepVerified(String(out || ""), [facts]);
-      v.text = v.text.replace(/\s+\d+\.\s*(?=\d+\.|$)/g, " ").replace(/\s(\d+\.)\s/g, "\n$1 ").trim();
-      box.innerHTML = v.text ? `<div class="card"><div class="notice info"><span>🤖</span><span style="white-space:pre-wrap">${esc(v.text)}</span></div></div>` : '<div class="muted small">Yorum çıkmadı.</div>';
+      const text = await requestEvidenceReport(db, facts, "Teklif hesabında fiyat öncesi kontrol edilecek kanıtlar");
+      box.innerHTML = `<div class="notice info" style="white-space:pre-wrap">${esc(text)}</div>`;
     } catch (e) {
       box.innerHTML = notice("danger", String(e.message || e));
     }

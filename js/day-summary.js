@@ -1,3 +1,4 @@
+import { evidenceCatalog } from "./evidence-report.js";
 // Gün sonu özeti ve "Soru Sor" araçları — SAF katman. Rakamlar telefonda hesaplanır;
 // Gemini yalnız bu rakamlarla cümle kurar. Doğrulanamayan rakam içeren cümle atılır.
 import { isActive, cariBalance, todayStr, addDays, daySummary, tankStatus } from "./core.js";
@@ -88,10 +89,10 @@ export const SUMMARY_SYSTEM = [
 
 // Doğrulanamayan rakam içeren cümleyi at
 export function keepVerified(text, facts) {
-  const sentences = String(text || "").replace(/\r/g, "").split(/(?<=[.!?])\s+|\n+/).map((x) => x.trim()).filter(Boolean);
-  const kept = [], dropped = [];
-  for (const s of sentences) (checkAnswer(s, facts).length ? dropped : kept).push(s);
-  return { text: kept.join(" "), dropped };
+  const allowed = new Set(evidenceCatalog(facts).map(r => `${r.label}: ${r.value}`));
+  const lines = String(text || "").split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  const kept = lines.filter(x=>allowed.has(x)), dropped = lines.filter(x=>!allowed.has(x));
+  return {text:kept.join("\n"),dropped};
 }
 
 // ---- Soru Sor: Gemini fonksiyon çağrısı ile telefondaki kayıtlardan hesap ----

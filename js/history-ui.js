@@ -43,7 +43,7 @@ export async function screen(ctx) {
       <div data-history-summary aria-live="polite"></div></section>
       <div data-history-rows></div>
       <section class="slip-panel"><h2>03 · Son Onay</h2><p class="slip-hint">Yalnız hakedişe alınmamış ve ödenmemiş işler aktarılır. Tahsilat, cari borç, hakediş veya imza otomatik oluşturulmaz. Geçmiş fiyat korunur; güncel fiyat listesi uygulanmaz.</p>
-      <button class="btn" data-history-backup>Önce Tam Yedek İndir</button>
+      <button class="btn" data-history-backup>Önce Veri ve Ek Yedeği İndir</button>
       <label class="history-check"><input type="checkbox" data-history-confirm> Seçili kayıtların tarihini, miktarını, fiyatını ve hesap durumunu kontrol ettim.</label>
       <button class="btn primary block" data-history-commit disabled>Seçili Kayıtları Aktar</button><div data-history-result aria-live="polite"></div></section>
     </div>`;
@@ -272,10 +272,10 @@ export async function screen(ctx) {
       const b = await fullBackup(db);
       downloadBlob(
         new Blob([JSON.stringify(b)], { type: "application/json" }),
-        "SAHAPRO_aktarim_oncesi_tam_yedek.json",
+        "SAHAPRO_aktarim_oncesi_veri_yedegi.json",
       );
       toast(
-        "Tam yedek indirme başlatıldı. Dosyanın kaydedildiğini kontrol edin.",
+        "Veri ve ek yedeği indiriliyor; şoför anahtarlarını içermez. Tam kurtarma için Ayarlar → Yedekleme kullanın.",
         "ok",
       );
     } catch (e) {

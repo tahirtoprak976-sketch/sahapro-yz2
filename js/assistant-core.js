@@ -726,13 +726,14 @@ export function checkAnswer(answer, facts) {
   for (const n of [...known]) known.add(Math.round(n)); // yuvarlanmış söyleyiş
   const bad = [];
   // Her sayı belirtecinin olası okumalarından (1.234,5 / 1,234.5 / 50.000) biri gerçeklerde olmalı
-  for (const m of String(answer).matchAll(/\d[\d.,]*/g)) {
+  const prose = String(answer).replace(/\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}[./]\d{1,2}[./]\d{4}\b/g, " ");
+  for (const m of prose.matchAll(/\d[\d.,]*/g)) {
     const tok = m[0].replace(/[.,]$/, "");
     // "9.320" / "1.250.000" / "12.500,75" Türkçe binlik yazımıdır: tek okuma (9320) — "9,32" ya da 9 gibi yuvarlak okumaya kaçmasın
     const trThousands = /^\d{1,3}(\.\d{3})+(,\d+)?$/.test(tok);
     const cands = trThousands ? [Number(tok.replace(/\./g, "").replace(",", "."))] : [...numbersInText(m[0])];
     if (!cands.length) continue;
-    if (cands.every((n) => n <= 31 || (n >= 2000 && n <= 2100))) continue; // gün, ay, yıl
+    // Küçük tutarlar ve 2000–2100 arası sayılar tarih sayılmaz; yalnız açık tarih tokenı çıkarıldı.
     if (cands.some((n) => known.has(n) || known.has(Math.round(n)))) continue;
     bad.push(Math.max(...cands));
   }

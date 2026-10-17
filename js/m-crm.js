@@ -1507,9 +1507,13 @@ export async function doBackup(ctx) {
   if (!(await sec.reauth("Yedek alma (tüm kayıtlar dışarı çıkar)"))) return;
   await sec.secLog("backup", "Yedek alındı");
   const { fullBackup } = await import("./backup.js");
-  const backup = await fullBackup(ctx.db);
-  // Sıkıştırılmış (çok daha küçük) ve şifre konduysa şifreli: WhatsApp/Drive'daki dosyayı başkası açamaz
   const pw = (await ctx.db.metaGet("backup_pw")) || "";
+  const hasDriverLinks = ((await ctx.db.metaGet("driver_links")) || []).length > 0;
+  if (hasDriverLinks && pw.length < 10) {
+    toast("Şoför bağlantılarını tam yedeklemek için Yedek Şifresi bölümünden en az 10 karakterli şifre belirleyin.", "err");
+    return;
+  }
+  const backup = await fullBackup(ctx.db, { includeDriverSecrets: hasDriverLinks });
   const { encodeBackup } = await import("./backup-crypt.js");
   const bytes = await encodeBackup(backup, pw);
   const name = `SAHAPRO_YEDEK_${tsName()}${pw ? "_SIFRELI" : ""}.sahapro`;
@@ -1717,13 +1721,13 @@ async function settings(ctx) {
     } catch (e) { toast("Küçültülemedi: " + (e.message || e), "err"); b.disabled = false; }
   });
   qs("[data-bakpw]", root)?.addEventListener("click", async () => {
-    const pw = await promptDialog(backupPw ? "Yedek şifresi" : "Yedeğe şifre koy", backupPw ? "Yeni şifre (boş bırakıp Tamam = şifreyi kaldır)" : "Şifre (en az 6 karakter)", "", { type: "password", hint: "ÖNEMLİ: Bu şifreyi bir yere yazın. Telefon kaybolursa yedeği ancak bu şifreyle açabilirsiniz; şifre unutulursa yedek AÇILAMAZ." });
+    const pw = await promptDialog(backupPw ? "Yedek şifresi" : "Yedeğe şifre koy", backupPw ? "Yeni şifre (boş bırakıp Tamam = şifreyi kaldır)" : "Şifre (en az 10 karakter)", "", { type: "password", hint: "ÖNEMLİ: Bu şifreyi bir yere yazın. Telefon kaybolursa yedeği ancak bu şifreyle açabilirsiniz; şifre unutulursa yedek AÇILAMAZ." });
     if (pw === null && backupPw) {
       if (await confirmDialog("Şifre kaldırılsın mı?", "Bundan sonraki yedekler şifresiz (yalnız sıkıştırılmış) olur.", "Kaldır", true)) { await db.metaSet("backup_pw", null); toast("Yedek şifresi kaldırıldı", "ok"); ctx.reload(); }
       return;
     }
     if (!pw) return;
-    if (pw.length < 6) return toast("Şifre en az 6 karakter olmalı", "err");
+    if (pw.length < 10) return toast("Şifre en az 10 karakter olmalı", "err");
     const again = await promptDialog("Şifreyi tekrar yazın", "Şifre (tekrar)", "", { type: "password" });
     if (again !== pw) return toast("Şifreler aynı değil", "err");
     await db.metaSet("backup_pw", pw);

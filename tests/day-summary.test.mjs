@@ -44,7 +44,8 @@ const ls = localSummary(f);
 assert.ok(/6 sefer/.test(ls) && /Hisar Polat/.test(ls) && /20\.000/.test(ls), ls);
 // uydurma rakamlı cümle atılır
 const k = keepVerified("Bugün Hisar Polat'a 6 sefer yapıldı. Tahsilat 20.000 TL oldu. Kâr 35.000 TL arttı.", f);
-assert.equal(k.dropped.length, 1); assert.ok(/6 sefer/.test(k.text) && !/35/.test(k.text));
+// Serbest cümle sayı eşleştirmesiyle artık doğrulanmış sayılmaz; etiket-değer kanıtı gerekir.
+assert.equal(k.text, ""); assert.equal(k.dropped.length, 1);
 
 // ---- soru araçları ----
 let r = runAskTool(data, "work_totals", { customer: "mahir bey" }, today);

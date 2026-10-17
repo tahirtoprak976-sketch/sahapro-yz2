@@ -1,9 +1,10 @@
 // Versioned atomic app shell. Existing cached assets are never mixed with a new release.
-const CACHE = "yz2-solo-v1-20261018-akis-lab-2";
+const CACHE = "yz2-solo-v1-20261018-akis-sp1-1";
 const CDN_CACHE = "yz2-solo-cdn-v1";
 const ASSETS = [
   "./js/assistant-price.js", "./js/ai-guard.js", "./js/evidence-report.js",
   "./js/flow-core.js", "./js/flow-store.js", "./js/flow-identity.js", "./js/flow-service.js",
+  "./js/flow-sp1.js",
   "./lab.html", "./js/flow-lab-ui.js",
   "./",
   "./index.html",

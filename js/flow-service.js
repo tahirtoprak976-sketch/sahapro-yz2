@@ -50,20 +50,33 @@ export function createFlowService({ store, config, uuid, now, subtle }) {
 
   // ============================ ALIM (şoför bildirimi geldi) ============================
   // packet: { linkId, entryId, fields, rawText, attachments?: [{name, bytes}] }
+  //   packet'in taşıma meta'sı (sent_at, retry_no, kanal...) BİLİNÇLİ okunmaz:
+  //   fingerprint sözleşmesi gereği yeniden gönderim sahte OP_CONFLICT üretmemeli.
   // related: fork ile açılıyorsa { type:'yeni_is', from, reason }
+  // opts.failAt: yalnız testler için hata enjeksiyonu ('attachments' = ek yazım tx'i).
   async function intakePacket(packet, opts = {}) {
     const bad = validatePacket(packet);
     if (bad) throw err(bad, "Zorunlu alanlar eksik (date/vehicle_id/work_type/quantity)");
     const lv = linkVerdict(config, packet.linkId);
     if (!lv.ok) throw err(lv.code, lv.detail); // tanınmayan/iptalli bağlantı: rapor AÇILMAZ
 
+    // Ek hazırlığı (içerik hash'i) tx DIŞI ve rapor açılmadan ÖNCE (F maddesi):
+    // hash'ler fingerprint'e gireceği için karar anında hazır olmalı. Biçimi bozuk ek
+    // (Uint8Array olmayan) PACKET_INVALID'dir — rapor AÇILMAZ, yarım kayıt kalmaz.
+    const prepared = [];
+    for (const a of packet.attachments || []) prepared.push(await prepareAttachment(a.bytes, a.name));
+
     const opKey = core.opKeyOf({ tenant: config.tenant, linkId: packet.linkId, entryId: packet.entryId });
-    const fingerprint = await sha256hex(core.canonicalStringify({ linkId: packet.linkId, entryId: packet.entryId, fields: packet.fields, rawText: packet.rawText || "" }));
+    const fingerprint = await sha256hex(core.fingerprintPayload({
+      fields: packet.fields,
+      rawText: packet.rawText || "",
+      attachmentHashes: prepared.map((p) => p.hash), // sıra korunur — ek sırası da içeriktir
+    }));
 
     const existing = await store.byIndex("reports", "op_key", opKey);
     // Teknik hataya düşmüş kayıt aynı içerikle gelirse: yeniden dene (T11), yeni kayıt AÇMA.
     if (existing && existing.state === "teknik_hata" && existing.fingerprint === fingerprint)
-      return resumeFromTechError(existing, packet);
+      return resumeFromTechError(existing, packet, prepared);
 
     const dec = core.opKeyDecision(existing, fingerprint);
     if (!dec.ok) throw err(dec.code, dec.detail);              // OP_CONFLICT — sessiz birleştirme yok
@@ -94,37 +107,50 @@ export function createFlowService({ store, config, uuid, now, subtle }) {
       throw e;
     }
 
-    // Ek hazırlığı rapor açıldıktan SONRA, tx dışı. Hata → T10 teknik_hata (iş reddi değil!).
-    let prepared = [];
-    try {
-      for (const a of packet.attachments || []) prepared.push(await prepareAttachment(a.bytes, a.name));
-    } catch (e) {
-      await markTechError(report.id, "Ek hazırlama hatası: " + e.message);
-      return { result: "tech_error", report: await store.get("reports", report.id) };
-    }
+    // Eklerin YAZIMI ayrı tx (baytlar hash'lenmişti, tx dışı hazır). Yazım hatası → T10 teknik_hata
+    // (iş reddi değil!); aynı paketle yeniden deneme resume eder.
     if (prepared.length)
-      await store.tx(["attachments", "audit"], async (x) => {
-        for (const p of prepared) await x.put("attachments", { ...p, report_id: report.id, work_id: null });
-        await x.put("audit", auditRow(report.id, { id: "kaynak", role: "sistem" }, "attachments_attached", "gonderildi", "gonderildi", prepared.length + " ek"));
-      });
+      try {
+        await store.tx(["attachments", "audit"], async (x) => {
+          if (opts.failAt === "attachments") throw err("INJECTED", "ek yazımı hatası (test)");
+          for (const p of prepared) await x.put("attachments", { ...p, report_id: report.id, work_id: null });
+          await x.put("audit", auditRow(report.id, { id: "kaynak", role: "sistem" }, "attachments_attached", "gonderildi", "gonderildi", prepared.length + " ek"));
+        });
+      } catch (e) {
+        // Yarış korumalı: rapor bizim bıraktığımız gonderildi/v0'dan ilerletildiyse not yazma.
+        await markTechError(report.id, "Ek yazım hatası: " + e.message, { state: "gonderildi", version: report.version });
+        return { result: "tech_error", report: await store.get("reports", report.id) };
+      }
     return { result: "created", report: await store.get("reports", report.id) };
   }
 
-  async function markTechError(reportId, message) {
+  // Teknik hata kaydı da YARIŞ KORUMALI yazılır:
+  //  - expect {state, version} verildiyse kayıt hâlâ öyleyse yaz; değilse SKIP
+  //    (başka sekme ilerletmiştir — geç kalan hata notu güncel durumu kirletmez).
+  //  - Final durumlar (onaylandi/iptal) ASLA teknik_hata'ya düşmez; not bile yazılmaz.
+  //  - findTransition yalnız T10'a (gonderildi→teknik_hata) izin verir; diğer durumlarda
+  //    durum DEĞİŞMEZ, yalnız not düşülür.
+  async function markTechError(reportId, message, expect) {
     return store.tx(["reports", "audit"], async (x) => {
       const r = await x.get("reports", reportId);
+      if (!r) throw err(core.ERR.PACKET_INVALID, "Rapor yok: " + reportId);
+      if (expect) {
+        if (expect.state !== undefined && r.state !== expect.state) return { skipped: "state", state: r.state, version: r.version };
+        if (expect.version !== undefined && r.version !== expect.version) return { skipped: "version", state: r.state, version: r.version };
+      }
+      if (r.state === "onaylandi" || r.state === "iptal") return { skipped: "final", state: r.state, version: r.version };
       const t = core.findTransition(r.state, "teknik_hata");
+      const from = r.state;
       if (t) { r.state = "teknik_hata"; r.version++; }
       r.last_tech_error = message;
       await x.put("reports", r);
-      await x.put("audit", auditRow(reportId, { id: "sistem", role: "sistem" }, "tech_error", t ? t.from : r.state, "teknik_hata", message));
+      await x.put("audit", auditRow(reportId, { id: "sistem", role: "sistem" }, "tech_error", from, t ? "teknik_hata" : from, message));
+      return { skipped: null, state: r.state, version: r.version };
     });
   }
 
-  // T11: aynı op-key + aynı içerikle yeniden deneme — ekleri tekrar hazırla, durumu gonderildi'ye çek.
-  async function resumeFromTechError(existing, packet) {
-    const prepared = [];
-    for (const a of packet.attachments || []) prepared.push(await prepareAttachment(a.bytes, a.name)); // hata olursa teknik_hata'da kalır
+  // T11: aynı op-key + aynı içerikle yeniden deneme — hazırlanmış ekleri yaz, durumu gonderildi'ye çek.
+  async function resumeFromTechError(existing, packet, prepared) {
     await store.tx(["reports", "attachments", "audit"], async (x) => {
       const r = await x.get("reports", existing.id);
       raise(core.assertVersion(r, existing.version));
@@ -216,10 +242,12 @@ export function createFlowService({ store, config, uuid, now, subtle }) {
     const pre = await store.get("reports", id);
     if (!pre) throw err(core.ERR.PACKET_INVALID, "Rapor yok: " + id);
     if (pre.state === "onaylandi") return existingApproval(pre); // idempotent kısa yol
+    let seen = null; // başarısız tx'in gördüğü durum/sürüm — geç kalan not yazımının referansı
     try {
       const out = await store.tx(["reports", "revisions", "approvals", "works", "attachments", "audit"], async (x) => {
         const r = await x.get("reports", id);
         if (r.state === "onaylandi") return { result: "existing", work: await x.byIndex("works", "op_key", r.op_key), approval: await x.byIndex("approvals", "op_key", r.op_key) };
+        seen = { state: r.state, version: r.version };
         raise(core.assertVersion(r, expectedVersion));
         raise(core.canTransition(r, "onaylandi", actor, config));
         if (r.rev_no !== revNo) throw err(core.ERR.REV_MISMATCH, "onaylanan r" + revNo + ", güncel r" + r.rev_no);
@@ -263,10 +291,19 @@ export function createFlowService({ store, config, uuid, now, subtle }) {
       });
       return out;
     } catch (e) {
-      // Hata = hiçbir şey yazılmadı (abort). Durum onay_bekliyor KALIR; teknik hata notu düşülür.
+      // Hata = hiçbir şey yazılmadı (abort). Durum onay_bekliyor KALIR.
+      // GEÇ KALAN hata notu YARIŞ KORUMALIDIR:
+      //   - kayıt bu arada onaylandi/iptal olduysa (başka sekme kazandı) not YAZILMAZ —
+      //     kazanan işlem asla teknik_hata notuyla kirlenmez, durumu asla düşürülmez.
+      //   - durum/sürüm bizim gördüğümüzden ilerlediyse (düzenleme, başka geçiş) not YAZILMAZ —
+      //     bizim hatamız artık güncel kaydın bağlamı değildir.
       await store.tx(["reports"], async (x) => {
         const r = await x.get("reports", id);
-        if (r && r.state !== "onaylandi") { r.last_tech_error = e.message; await x.put("reports", r); }
+        if (!r) return;
+        if (r.state === "onaylandi" || r.state === "iptal") return;
+        if (seen && (r.version !== seen.version || r.state !== seen.state)) return;
+        r.last_tech_error = e.message;
+        await x.put("reports", r);
       });
       throw e;
     }
@@ -311,7 +348,7 @@ export function createFlowService({ store, config, uuid, now, subtle }) {
   }
 
   return {
-    intakePacket, prepareAttachment,
+    intakePacket, prepareAttachment, markTechError,
     startCheck, completeCheck, requestCorrection, submitRevision, editFields,
     approve, reject, cancel, forkAsNewJob,
   };

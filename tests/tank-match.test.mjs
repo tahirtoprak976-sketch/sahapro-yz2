@@ -1,0 +1,15 @@
+import assert from "node:assert/strict";
+import { tankInMatch, tankDupPairs, invoiceFieldsOf } from "../js/tank-match.js";
+const m = (id, date, liters, x = {}) => ({ id, date, liters, move_type: "GİRİŞ", ...x });
+const moves = [m("a", "2026-10-10", 5000), m("b", "2026-10-15", 3000), m("c", "2026-09-01", 5000), m("d", "2026-10-14", 5000, { customer_id: "k" }), m("e", "2026-10-14", 5000, { deleted_at: "x" })];
+assert.equal(tankInMatch(moves, { date: "2026-10-15", liters: 5000 }).id, "a");
+assert.equal(tankInMatch(moves, { date: "2026-10-15", liters: 4990 }).id, "a");
+assert.equal(tankInMatch(moves, { date: "2026-10-15", liters: 4000 }), null);
+assert.equal(tankInMatch([m("a", "2026-10-10", 5000, { invoice_no: "X1" })], { date: "2026-10-15", liters: 5000 }), null);
+assert.equal(tankInMatch([m("a", "2026-10-10", 5000, { count_id: "s" })], { date: "2026-10-10", liters: 5000 }), null);
+const inv = m("i", "2026-10-16", 5000, { invoice_no: "AYG1", total: 450950, unit_price: 90.19, supplier_id: "s1", ettn: "e", irsaliye_no: "IRS" });
+const P = tankDupPairs([...moves, inv]);
+assert.equal(P.length, 1); assert.equal(P[0].keep.id, "a"); assert.equal(P[0].drop.id, "i");
+const f = invoiceFieldsOf(inv);
+assert.equal(f.invoice_no, "AYG1"); assert.equal(f.total, 450950); assert.equal(f.unit_price, 90.19); assert.equal(f.supplier_id, "s1"); assert.equal(f.irsaliye_no, "IRS");
+console.log("tank-match ok");

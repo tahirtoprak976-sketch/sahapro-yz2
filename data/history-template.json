@@ -1,0 +1,22 @@
+{
+  "format": "SAHAPRO_HISTORY_V1",
+  "title": "Geçmiş iş aktarım şablonu — alanları gerçek bilgilerle doldurun",
+  "rows": [
+    {
+      "row_id": "BURAYA_BENZERSIZ_KAYNAK_NO",
+      "kind": "work",
+      "date": "",
+      "customer": "",
+      "vehicle": "",
+      "vehicle_type": "",
+      "work_type": "Hafriyat Nakliye",
+      "quantity": null,
+      "unit": "Sefer",
+      "unit_price": null,
+      "kdv_rate": null,
+      "kdv_included": null,
+      "settlement_status": "unbilled_unpaid",
+      "raw_message": ""
+    }
+  ]
+}

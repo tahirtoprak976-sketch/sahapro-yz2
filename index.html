@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#091d30" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <!-- Güvenlik: uygulama yalnız kendi dosyalarını, Gemini'yi ve gerekli CDN'leri kullanabilir; anahtar başka adrese gönderilemez -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net blob: 'wasm-unsafe-eval'; worker-src 'self' blob: https://cdn.jsdelivr.net; connect-src 'self' blob: data: https://generativelanguage.googleapis.com https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://*.hf.co https://raw.githubusercontent.com; img-src 'self' blob: data:; media-src 'self' blob: data:; font-src 'self' data:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; form-action 'self'" />
+    <title>SAHAPRO YZ2 — Muratoğlu Hafriyat</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="icons/icon-192.png" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <noscript>Bu uygulama JavaScript gerektirir.</noscript>
+    <div id="screen" class="screen"></div>
+    <nav id="bottomnav" class="bottomnav" hidden></nav>
+    <div id="sheet-root"></div>
+    <div id="toast-root"></div>
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>

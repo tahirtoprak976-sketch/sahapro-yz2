@@ -1,0 +1,22 @@
+import assert from "node:assert/strict";
+import { sameDocument, duplicateDocuments, latestDocuments, docFamily } from "../js/core.js";
+import { validateDocuments } from "../js/assistant-docs.js";
+const D = (id, category, doc_no, extra = {}) => ({ id, category, doc_no, owner_type: "vehicle", owner_id: "V", vehicle_id: "V", date: "2025-02-26", expiry_date: "2026-02-26", created_at: "2026-10-16T09:0" + id, ...extra });
+const a = D("1", "Muayene Belgesi", "MR-123"), b = D("2", "TÜVTÜRK / Periyodik Muayene", "mr 123"), c = D("3", "Kasko", "MR-123");
+assert.equal(docFamily("TÜVTÜRK / Periyodik Muayene"), "Muayene Belgesi");
+assert.ok(sameDocument(a, b), "farklı adla aynı muayene"); assert.ok(!sameDocument(a, c), "farklı tür");
+assert.ok(sameDocument(a, D("4", "Muayene Belgesi", "XX-9")), "no farklı okunmuş ama tarihler aynı");
+assert.ok(!sameDocument(a, D("5", "Muayene Belgesi", "MR-999", { date: "2026-02-20", expiry_date: "2027-02-20" })), "yenilenen belge");
+assert.ok(!sameDocument(a, { ...b, owner_id: "W", vehicle_id: "W" }), "başka araç");
+const g = duplicateDocuments([b, a, c]);
+assert.equal(g.length, 1); assert.equal(g[0][0].id, "1", "ilk kaydedilen tutulur");
+assert.equal(latestDocuments([a, b, c]).length, 2, "muayene uyarısı tek");
+// Asistan: aynı belge yeniden yüklenince yeni belge önerilmez
+const d = { vehicles: [{ id: "V", name: "34EC1353", plate: "34 EC 1353", created_at: "x" }], personnel: [], documents: [a] };
+const T = "MUAYENE No: MR-123 Plaka 34 EC 1353 Model Yılı 2016 26.02.2025 geçerlilik 26.02.2026";
+const [r] = validateDocuments({ documents: [{ photo: 0, category: "TÜVTÜRK / Periyodik Muayene", doc_no: "MR-123", date: "2025-02-26", expiry_date: "2026-02-26", model_year: 2016 }] }, { d, today: "2026-10-16", photoTexts: [T], photoCount: 1 });
+assert.equal(r.existing_doc_id, "1"); assert.ok(r.issues.some((x) => /zaten kayıtlı/.test(x)));
+assert.equal(r.ok, true, "kart güncellemesi var (model yılı)");
+const [r2] = validateDocuments({ documents: [{ photo: 0, category: "Muayene Belgesi", doc_no: "MR-123", date: "2025-02-26", expiry_date: "2026-02-26" }] }, { d: { ...d, vehicles: [{ ...d.vehicles[0], model_year: 2016 }] }, today: "2026-10-16", photoTexts: [T], photoCount: 1 });
+assert.equal(r2.ok, false, "yapılacak bir şey yok");
+console.log("doc-dedupe ok");

@@ -1,0 +1,944 @@
+[
+ {
+  "t": "Firma F İnşaat Eyüp 34 ABC 123 6 sefer hafriyat",
+  "rows": [
+   {
+    "customer": "CF",
+    "site": "S2",
+    "vehicle": "V1",
+    "type": "Hafriyat Nakliye",
+    "qty": 6,
+    "unit": "Sefer"
+   }
+  ]
+ },
+ {
+  "t": "Gümüş Yapı Şişli Plaza 34EC1353 5 sefer moloz",
+  "rows": [
+   {
+    "customer": "CG",
+    "site": "S3",
+    "vehicle": "V3",
+    "type": "Moloz Nakliye",
+    "qty": 5,
+    "unit": "Sefer"
+   }
+  ]
+ },
+ {
+  "t": "Gumus Yapi 34EC1353 5 sefer moloz",
+  "rows": [
+   {
+    "customer": null,
+    "vehicle": "V3",
+    "type": "Moloz Nakliye",
+    "qty": 5,
+    "unit": "Sefer"
+   }
+  ]
+ },
+ {
+  "t": "JCB Ahmet Yılmaz İnşaat Bahçeşehir 8 saat kazı",
+  "rows": [
+   {
+    "customer": "CA",
+    "site": "S4",
+    "vehicle": "J",
+    "qty": 8,
+    "unit": "Saat"
+   }
+  ]
+ },
+ {
+  "t": "jcb ile kum yüklemesi 3 saat Leda",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": "J",
+    "type": "JCB Çalışması",
+    "qty": 3,
+    "unit": "Saat"
+   }
+  ]
+ },
+ {
+  "t": "Patron C Kemerburgaz 34 ABC 123 4 sefer moloz",
+  "rows": [
+   {
+    "customer": "CF",
+    "site": "S1",
+    "vehicle": "V1",
+    "type": "Moloz Nakliye",
+    "qty": 4,
+    "unit": "Sefer"
+   }
+  ]
+ },
+ {
+  "t": "Patron C kemer 34 ABC 123 4 sefer moloz",
+  "rows": [
+   {
+    "customer": "CF",
+    "site": "S1",
+    "vehicle": "V1",
+    "type": "Moloz Nakliye",
+    "qty": 4,
+    "unit": "Sefer"
+   }
+  ]
+ },
+ {
+  "t": "Ahmet Bey 34 ABC 123 3 sefer çöp",
+  "rows": [
+   {
+    "customer": "CA",
+    "vehicle": "V1",
+    "type": "Çöp Nakliye",
+    "qty": 3,
+    "unit": "Sefer"
+   }
+  ]
+ },
+ {
+  "t": "Firma F İnşaat 34 ABC 123 6 sefer hafriyat",
+  "rows": [
+   {
+    "customer": "CF",
+    "site": null,
+    "vehicle": "V1",
+    "qty": 6,
+    "unit": "Sefer"
+   }
+  ]
+ },
+ {
+  "t": "Öztürk Grup 34 ABC 123 2 sefer moloz",
+  "rows": [
+   {
+    "customer": "CO",
+    "site": null,
+    "vehicle": "V1",
+    "qty": 2,
+    "unit": "Sefer"
+   }
+  ]
+ },
+ {
+  "t": "Öztürk Grup Kağıthane 34 ABC 123 2 sefer moloz",
+  "rows": [
+   {
+    "customer": "CO",
+    "site": "S7",
+    "vehicle": "V1",
+    "qty": 2,
+    "unit": "Sefer"
+   }
+  ]
+ },
+ {
+  "t": "Leda Yeşilpınar 34EC1353 2 sefer çöp",
+  "rows": [
+   {
+    "customer": "CL",
+    "site": "S6",
+    "vehicle": "V3",
+    "type": "Çöp Nakliye",
+    "qty": 2,
+    "unit": "Sefer"
+   }
+  ]
+ },
+ {
+  "t": "Leda Yesilpinar 34EC1353 2 sefer çöp",
+  "rows": [
+   {
+    "customer": "CL",
+    "site": null,
+    "vehicle": "V3",
+    "type": "Çöp Nakliye",
+    "qty": 2,
+    "unit": "Sefer"
+   }
+  ]
+ },
+ {
+  "t": "Mehmet Akyüz 34 ABC 123 7 sefer hafriyat",
+  "rows": [
+   {
+    "customer": "CM",
+    "vehicle": "V1",
+    "type": "Hafriyat Nakliye",
+    "qty": 7,
+    "unit": "Sefer"
+   }
+  ]
+ },
+ {
+  "t": "Çağrı Hafriyat jcb 2 saat",
+  "rows": [
+   {
+    "customer": "CH",
+    "vehicle": "J",
+    "type": "JCB Çalışması",
+    "qty": 2,
+    "unit": "Saat"
+   }
+  ]
+ },
+ {
+  "t": "Manitou Gümüş Yapı 6 saat",
+  "rows": [
+   {
+    "customer": "CG",
+    "vehicle": "M",
+    "type": "Manitou Çalışması",
+    "qty": 6,
+    "unit": "Saat"
+   }
+  ]
+ },
+ {
+  "t": "Mini kato Leda 4 saat",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": "MK",
+    "type": "Mini Kato Çalışması",
+    "qty": 4,
+    "unit": "Saat"
+   }
+  ]
+ },
+ {
+  "t": "Kumanda arızası jcb 2 saat Leda",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": "J",
+    "type": "JCB Çalışması",
+    "qty": 2,
+    "unit": "Saat"
+   }
+  ]
+ },
+ {
+  "t": "34 ABC 123 Firma F İnşaat Eyüp 3 sefer mıcır",
+  "rows": [
+   {
+    "customer": "CF",
+    "site": "S2",
+    "vehicle": "V1",
+    "type": "Mıcır Nakliye",
+    "qty": 3,
+    "unit": "Sefer"
+   }
+  ]
+ },
+ {
+  "t": "Leda mıcır 3 saat",
+  "rows": [
+   {
+    "customer": "CL",
+    "type": null,
+    "qty": 3,
+    "unit": "Saat"
+   }
+  ]
+ },
+ {
+  "t": "Leda 34 ABC 123 10 ton kum",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": "V1",
+    "type": "Kum Nakliye",
+    "qty": 10,
+    "unit": "Ton"
+   }
+  ]
+ },
+ {
+  "t": "Leda 34 ABC 123 12 m3 gravak",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": "V1",
+    "type": "Gravak Nakliye",
+    "qty": 12,
+    "unit": "m³"
+   }
+  ]
+ },
+ {
+  "t": "Ahmet Yılmaz İnşaat 4 sefer hafriyat, Gümüş Yapı 3 sefer moloz",
+  "rows": [
+   {
+    "customer": "CA",
+    "type": "Hafriyat Nakliye",
+    "qty": 4,
+    "unit": "Sefer"
+   },
+   {
+    "customer": "CG",
+    "type": "Moloz Nakliye",
+    "qty": 3,
+    "unit": "Sefer"
+   }
+  ]
+ },
+ {
+  "t": "Ahmet Yılmaz İnşaat 4 sefer hafriyat ve Gümüş Yapı 3 sefer moloz",
+  "rows": [
+   {
+    "customer": "CA",
+    "qty": 4
+   },
+   {
+    "customer": "CG",
+    "qty": 3
+   }
+  ]
+ },
+ {
+  "t": "Gümüş Yapı: 4 sefer hafriyat, 3 sefer moloz",
+  "rows": [
+   {
+    "customer": "CG",
+    "type": "Hafriyat Nakliye",
+    "qty": 4
+   },
+   {
+    "customer": "CG",
+    "type": "Moloz Nakliye",
+    "qty": 3
+   }
+  ]
+ },
+ {
+  "t": "Leda 34 ABC 123 2 sefer çöp\nGümüş Yapı 34EC1353 3 sefer moloz",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": "V1",
+    "qty": 2
+   },
+   {
+    "customer": "CG",
+    "vehicle": "V3",
+    "qty": 3
+   }
+  ]
+ },
+ {
+  "t": "Leda 34 ABC 123 2 sefer çöp; Gümüş Yapı 34EC1353 3 sefer moloz",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": "V1",
+    "qty": 2
+   },
+   {
+    "customer": "CG",
+    "vehicle": "V3",
+    "qty": 3
+   }
+  ]
+ },
+ {
+  "t": "Leda 34 ABC 123 2,5 saat jcb",
+  "rows": [
+   {
+    "customer": "CL",
+    "qty": 2.5,
+    "unit": "Saat"
+   }
+  ]
+ },
+ {
+  "t": "Leda 3 sefer hafriyat 34 ABC 123 15.000 TL",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": "V1",
+    "qty": 3,
+    "unit": "Sefer"
+   }
+  ]
+ },
+ {
+  "t": "Leda jcb 1 yevmiye",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": "J",
+    "qty": 1,
+    "unit": "Yevmiye"
+   }
+  ]
+ },
+ {
+  "t": "Gümüş Yapı 34 ABC 123 bugün 5 sefer hafriyat",
+  "rows": [
+   {
+    "customer": "CG",
+    "vehicle": "V1",
+    "qty": 5,
+    "unit": "Sefer",
+    "date": "2026-10-12"
+   }
+  ]
+ },
+ {
+  "t": "Gümüş Yapı 34 ABC 123 dün 5 sefer hafriyat",
+  "rows": [
+   {
+    "customer": "CG",
+    "vehicle": "V1",
+    "qty": 5,
+    "unit": "Sefer",
+    "date": "2026-10-11"
+   }
+  ]
+ },
+ {
+  "t": "Gümüş Yapı 34 ABC 123 09.10.2026 5 sefer hafriyat",
+  "rows": [
+   {
+    "customer": "CG",
+    "vehicle": "V1",
+    "qty": 5,
+    "unit": "Sefer",
+    "date": "2026-10-09"
+   }
+  ]
+ },
+ {
+  "t": "Leda 34 ABC 123 sefer çöp",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": "V1",
+    "qty": null
+   }
+  ]
+ },
+ {
+  "t": "Soner Abi 34EC1353 Leda 2 sefer çöp",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": "V3",
+    "personnel": null,
+    "qty": 2
+   }
+  ]
+ },
+ {
+  "t": "Şoför Soner Abi 34EC1353 Leda 2 sefer çöp",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": "V3",
+    "personnel": "P1",
+    "qty": 2
+   }
+  ]
+ },
+ {
+  "t": "Leda 34EC1353 2 sefer çöp, 34 ABC 123 3 sefer çöp",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": "V3",
+    "qty": 2
+   },
+   {
+    "customer": "CL",
+    "vehicle": "V1",
+    "qty": 3
+   }
+  ]
+ },
+ {
+  "t": "Leda 34EC1353 çalışmadı",
+  "rows": []
+ },
+ {
+  "t": "Gümüş Yapı ödeme yaptı 50000 TL havale",
+  "rows": []
+ },
+ {
+  "t": "34 ABC 123 mazot 80 litre",
+  "rows": [],
+  "fuel": [
+   {
+    "vehicle": "V1",
+    "liters": 80
+   }
+  ]
+ },
+ {
+  "t": "Leda 34 ABC 123 2 sefer çöp 1500 TL + KDV",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": "V1",
+    "qty": 2
+   }
+  ]
+ },
+ {
+  "t": "Çöp 2 sefer 34 ABC 123 Leda",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": "V1",
+    "type": "Çöp Nakliye",
+    "qty": 2
+   }
+  ]
+ },
+ {
+  "t": "Yeşilpınar 34 ABC 123 2 sefer çöp",
+  "rows": [
+   {
+    "customer": "CL",
+    "site": "S6",
+    "vehicle": "V1",
+    "qty": 2
+   }
+  ]
+ },
+ {
+  "t": "Beylikdüzü 34 ABC 123 2 sefer moloz",
+  "rows": [
+   {
+    "customer": "CO",
+    "site": "S8",
+    "vehicle": "V1",
+    "qty": 2
+   }
+  ]
+ },
+ {
+  "t": "Leda Gümüş Yapı 34 ABC 123 2 sefer moloz",
+  "rows": [
+   {
+    "customer": null,
+    "vehicle": "V1",
+    "qty": 2
+   }
+  ]
+ },
+ {
+  "t": "Kamyon 1 Leda 2 sefer çöp",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": "V2",
+    "qty": 2
+   }
+  ]
+ },
+ {
+  "t": "LEDA 34 ABC 123 2 SEFER ÇÖP",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": "V1",
+    "type": "Çöp Nakliye",
+    "qty": 2,
+    "unit": "Sefer"
+   }
+  ]
+ },
+ {
+  "t": "leda 34abc123 2 sefer çöp",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": "V1",
+    "qty": 2
+   }
+  ]
+ },
+ {
+  "t": "Leda 34 ABC 123 iki sefer çöp",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": "V1",
+    "qty": 2,
+    "unit": "Sefer"
+   }
+  ]
+ },
+ {
+  "t": "Leda 34 ABC 123 2 tur çöp",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": "V1"
+   }
+  ]
+ },
+ {
+  "t": "Leda jcb 08:00-17:00 1 saat mola",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": "J",
+    "qty": 8,
+    "unit": "Saat"
+   }
+  ]
+ },
+ {
+  "t": "Leda 34 ABC 123 2 kamyon çöp",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": "V1",
+    "qty": 2,
+    "unit": "Sefer"
+   }
+  ]
+ },
+ {
+  "t": "Leda 34 AB 1234 2 sefer çöp",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": null,
+    "qty": 2,
+    "unit": "Sefer"
+   }
+  ]
+ },
+ {
+  "t": "Leda 34 AB 1234 sefer çöp",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": null,
+    "qty": null
+   }
+  ]
+ },
+ {
+  "t": "Leda 0532 111 22 33 34 ABC 123 2 sefer çöp",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": "V1",
+    "qty": 2,
+    "unit": "Sefer"
+   }
+  ]
+ },
+ {
+  "t": "Leda 34 ABC 123 2 sefer çöp 3 saat jcb",
+  "rows": [
+   {
+    "customer": "CL",
+    "qty": 2,
+    "unit": "Sefer"
+   },
+   {
+    "customer": "CL",
+    "qty": 3,
+    "unit": "Saat"
+   }
+  ]
+ },
+ {
+  "t": "Leda ve Gümüş Yapı 34 ABC 123 2 sefer çöp",
+  "rows": [
+   {
+    "customer": null,
+    "vehicle": "V1",
+    "qty": 2
+   }
+  ]
+ },
+ {
+  "t": "Leda jcb 3 saat çalıştı, öğleden sonra 2 saat daha",
+  "rows": [],
+  "notice": "add_to_existing"
+ },
+ {
+  "t": "14 tonluk mahir bey şantiyesi yarım yevmiye",
+  "rows": [
+   {
+    "customer": "CMH",
+    "vehicle": "T14",
+    "qty": 0.5,
+    "unit": "Yevmiye"
+   }
+  ]
+ },
+ {
+  "t": "Leda jcb bir buçuk saat",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": "J",
+    "qty": 1.5,
+    "unit": "Saat"
+   }
+  ]
+ },
+ {
+  "t": "Leda jcb 2 buçuk saat",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": "J",
+    "qty": 2.5,
+    "unit": "Saat"
+   }
+  ]
+ },
+ {
+  "t": "Leda jcb yarım saat",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": "J",
+    "qty": 0.5,
+    "unit": "Saat"
+   }
+  ]
+ },
+ {
+  "t": "Leda jcb 1 yovmiye",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": "J",
+    "qty": 1,
+    "unit": "Yevmiye"
+   }
+  ]
+ },
+ {
+  "t": "Leda jcb yarım yevmiye",
+  "rows": [
+   {
+    "customer": "CL",
+    "vehicle": "J",
+    "qty": 0.5,
+    "unit": "Yevmiye"
+   }
+  ]
+ },
+ {
+  "t": "Ahmet bey 34 ABC 123 sefer 6",
+  "rows": [
+   {
+    "customer": "CA",
+    "vehicle": "V1",
+    "qty": 6,
+    "unit": "Sefer"
+   }
+  ]
+ },
+ {
+  "t": "hafriyat 34 ABC 123 6 seferrr eyüp firma f",
+  "rows": [
+   {
+    "customer": "CF",
+    "site": "S2",
+    "vehicle": "V1",
+    "type": "Hafriyat Nakliye",
+    "qty": 6,
+    "unit": "Sefer"
+   }
+  ]
+ },
+ {
+  "t": "34ABC123 x3 moloz Eyüp",
+  "rows": [
+   {
+    "customer": "CF",
+    "site": "S2",
+    "vehicle": "V1",
+    "type": "Moloz Nakliye",
+    "qty": 3,
+    "unit": "Sefer"
+   }
+  ]
+ },
+ {
+  "t": "Soner abi 34 ABC 123 ile 4 sefer moloz Firma F Kemerburgaz akşam 18:00 gibi bitti",
+  "rows": [
+   {
+    "customer": "CF",
+    "site": "S1",
+    "vehicle": "V1",
+    "type": "Moloz Nakliye",
+    "qty": 4,
+    "unit": "Sefer"
+   }
+  ]
+ },
+ {
+  "t": "Öztürk Grup Kağıthane 34 ABC 123 3 sefer Beylikdüzü 34EC1353 2 sefer",
+  "rows": [
+   {
+    "customer": "CO",
+    "site": "S7",
+    "vehicle": "V1",
+    "qty": 3,
+    "unit": "Sefer"
+   },
+   {
+    "customer": "CO",
+    "site": "S8",
+    "vehicle": "V3",
+    "qty": 2,
+    "unit": "Sefer"
+   }
+  ]
+ },
+ {
+  "t": "12/10 34 ABC 123 3 sefer Ahmet Bey",
+  "rows": [
+   {
+    "customer": "CA",
+    "vehicle": "V1",
+    "qty": 3,
+    "unit": "Sefer",
+    "date": "2026-10-12"
+   }
+  ]
+ },
+ {
+  "t": "34 ABC 123 2.5 saat Ahmet Bey",
+  "rows": [
+   {
+    "customer": "CA",
+    "vehicle": "V1",
+    "qty": 2.5,
+    "unit": "Saat"
+   }
+  ]
+ },
+ {
+  "t": "34 ABC 123 sabah 3 öğleden sonra 2 sefer moloz Ahmet Bey",
+  "rows": [
+   {
+    "customer": "CA",
+    "vehicle": "V1",
+    "type": "Moloz Nakliye",
+    "qty": 5,
+    "unit": "Sefer"
+   }
+  ]
+ },
+ {
+  "t": "[14:32, 12.10.2026] Soner Abi: 34 ABC 123 Gümüş Yapı 5 sefer moloz",
+  "rows": [
+   {
+    "customer": "CG",
+    "vehicle": "V1",
+    "type": "Moloz Nakliye",
+    "qty": 5,
+    "unit": "Sefer",
+    "date": "2026-10-12"
+   }
+  ]
+ },
+ {
+  "t": "dün 34 ABC 123 Firma F Eyüp 4 sefer hafriyat",
+  "rows": [
+   {
+    "customer": "CF",
+    "site": "S2",
+    "vehicle": "V1",
+    "qty": 4,
+    "unit": "Sefer",
+    "date": "2026-10-11"
+   }
+  ]
+ },
+ {
+  "t": "34 ABC 123 3 sefer moloz Eyüp 34EC1353 2 sefer kum Kağıthane Öztürk",
+  "rows": [
+   {
+    "customer": "CF",
+    "site": "S2",
+    "vehicle": "V1",
+    "type": "Moloz Nakliye",
+    "qty": 3,
+    "unit": "Sefer"
+   },
+   {
+    "customer": "CO",
+    "site": "S7",
+    "vehicle": "V3",
+    "type": "Kum Nakliye",
+    "qty": 2,
+    "unit": "Sefer"
+   }
+  ]
+ },
+ {
+  "t": "JCB 07:30-17:00 mola 1 saat Ahmet Bey Bahçeşehir",
+  "rows": [
+   {
+    "customer": "CA",
+    "site": "S4",
+    "vehicle": "J",
+    "qty": 8.5,
+    "unit": "Saat"
+   }
+  ]
+ },
+ {
+  "t": "jcb tam gün Ahmet Bey Bahçeşehir",
+  "rows": [
+   {
+    "customer": "CA",
+    "site": "S4",
+    "vehicle": "J",
+    "qty": 1,
+    "unit": "Yevmiye"
+   }
+  ]
+ },
+ {
+  "t": "34 ABC 123 3 tane sefer çöp Ahmet Bey",
+  "rows": [
+   {
+    "customer": "CA",
+    "vehicle": "V1",
+    "type": "Çöp Nakliye",
+    "qty": 3,
+    "unit": "Sefer"
+   }
+  ]
+ },
+ {
+  "t": "Ahmet Bey'in işine 2 kamyon gönderdim 4 er sefer",
+  "rows": [
+   {
+    "customer": "CA",
+    "qty": 8,
+    "unit": "Sefer"
+   }
+  ]
+ },
+ {
+  "t": "34 ABC 123 Ahmet Bey 3 sefer moloz pazartesi",
+  "rows": [
+   {
+    "customer": "CA",
+    "vehicle": "V1",
+    "qty": 3,
+    "unit": "Sefer",
+    "date": null
+   }
+  ]
+ }
+]

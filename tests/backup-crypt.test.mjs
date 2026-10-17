@@ -1,0 +1,15 @@
+import assert from "node:assert/strict";
+import { encodeBackup, decodeBackup, backupKind } from "../js/backup-crypt.js";
+const obj = { app: "x", data: { personnel: [{ id: "P", name: "Soner Kaya", identity_number: "10000000146" }] }, big: "hafriyat ".repeat(5000) };
+const plain = new TextEncoder().encode(JSON.stringify(obj));
+const z = await encodeBackup(obj);
+assert.equal(backupKind(z), "compressed"); assert.ok(z.length < plain.length / 10, "sıkıştırma");
+assert.deepEqual(await decodeBackup(z), obj);
+const e = await encodeBackup(obj, "Muratoglu2026");
+assert.equal(backupKind(e), "encrypted");
+assert.ok(!new TextDecoder().decode(e).includes("Soner"), "şifreli dosyada ad görünmez");
+assert.deepEqual(await decodeBackup(e, async () => "Muratoglu2026"), obj);
+await assert.rejects(() => decodeBackup(e, async () => "yanlis"), /şifresi yanlış/);
+await assert.rejects(() => decodeBackup(e, async () => null), /şifre girilmedi/);
+assert.deepEqual(await decodeBackup(plain), obj, "eski .json yedek");
+console.log("backup-crypt ok");

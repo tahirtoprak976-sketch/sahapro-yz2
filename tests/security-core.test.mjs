@@ -1,0 +1,27 @@
+import assert from "node:assert/strict";
+import { hashSecret, verifySecret, pinProblem, lockoutMs, hmac, hmacOk, linkVerdict, randomDigits, b64u, unb64u } from "../js/security-core.js";
+const r = await hashSecret("482917");
+assert.ok(r.hash && r.salt && r.iter >= 200000);
+assert.equal(await verifySecret("482917", r), true);
+assert.equal(await verifySecret("482918", r), false);
+assert.equal(await verifySecret("482917", { ...r, salt: "AAAAAAAAAAAAAAAAAAAAAA" }), false);
+const r2 = await hashSecret("482917");
+assert.notEqual(r.hash, r2.hash); // tuz farklı
+assert.equal(pinProblem("1234"), "En az 6 karakter olmalı");
+assert.ok(pinProblem("111111")); assert.ok(pinProblem("123456")); assert.ok(pinProblem("654321"));
+assert.equal(pinProblem("482917"), null); assert.equal(pinProblem("Murat2026"), null);
+assert.equal(lockoutMs(4), 0); assert.equal(lockoutMs(5), 30000); assert.equal(lockoutMs(6), 60000); assert.equal(lockoutMs(30), 3600e3);
+const k = b64u(new Uint8Array(16).fill(7));
+const s = await hmac(k, "KODABC");
+assert.equal(await hmacOk(k, "KODABC", s), true);
+assert.equal(await hmacOk(k, "KODABD", s), false);
+assert.equal(await hmacOk(b64u(new Uint8Array(16).fill(8)), "KODABC", s), false);
+assert.equal(await hmacOk(k, "KODABC", ""), false);
+assert.deepEqual([...unb64u(b64u(new Uint8Array([1, 2, 250])))], [1, 2, 250]);
+assert.equal(randomDigits(8).length, 8);
+assert.equal(linkVerdict(null, { today: "2026-10-17" }).level, "unknown");
+assert.equal(linkVerdict({ revoked_at: "2026-10-10T10:00" }, { today: "2026-10-17" }).level, "revoked");
+assert.equal(linkVerdict({ exp: "2026-10-01" }, { today: "2026-10-17" }).level, "expired");
+assert.equal(linkVerdict({ exp: "2027-10-01" }, { today: "2026-10-17", personnelActive: false }).level, "revoked");
+assert.equal(linkVerdict({ exp: "2027-10-01" }, { today: "2026-10-17" }).ok, true);
+console.log("security-core ok");

@@ -1,0 +1,16 @@
+import assert from "node:assert/strict";
+import { diffSnapshots, undoConflicts } from "../js/undo.js";
+const snap = (works, meta = {}) => ({ stores: { work_records: new Map(works.map((w) => [w.id, w])) }, att: new Set(), meta });
+const a = snap([{ id: "W1", q: 1 }], { collect_notes: null });
+const b = snap([{ id: "W1", q: 2 }, { id: "W2", q: 5 }], { collect_notes: { K: 1 } });
+b.att = new Set(["A1"]);
+const p = diffSnapshots(a, b);
+assert.equal(p.stores.work_records.added[0].id, "W2");
+assert.equal(p.stores.work_records.changed[0].before.q, 1);
+assert.deepEqual(p.attAdded, ["A1"]);
+assert.deepEqual(p.meta.collect_notes, { before: null, after: { K: 1 } });
+assert.equal(p.count, 3);
+assert.deepEqual(undoConflicts(p, b), [], "hemen sonra: çakışma yok");
+const c = snap([{ id: "W1", q: 3 }, { id: "W2", q: 5 }], { collect_notes: { K: 1 } });
+assert.deepEqual(undoConflicts(p, c), ["work_records"], "sonradan düzenlenmiş kayıt geri alınmaz");
+console.log("undo ok");

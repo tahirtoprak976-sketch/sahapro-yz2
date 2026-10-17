@@ -9,7 +9,7 @@ Senaryolar (kullanıcı maddeleri):
   S1 iki sekme aynı bildirimi aynı anda alır
   S2 iki sekme aynı anda onaylar
   S3 onay + düzenleme yarışı
-  S4 sekte kapanıp açılır (kalıcılık)
+  S4 sekme kapanıp açılır (kalıcılık)
   S5 abort sonrası yeniden deneme
   S6 ek/audit hatasında sıfır yarım iş
   S7 tamamlanmış işlemin tekrarı

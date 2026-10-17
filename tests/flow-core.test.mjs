@@ -3,7 +3,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   STATES, TRANSITIONS, EDITABLE_FIELDS, ERR,
-  opKeyOf, canonicalStringify, opKeyDecision, forkDecision,
+  opKeyOf, parseOpKey, canonicalStringify, fingerprintPayload, opKeyDecision, forkDecision,
   canTransition, assertVersion, editablePatch, invalidationPlan, canCancel, findTransition,
 } from "../js/flow-core.js";
 
@@ -59,6 +59,48 @@ test("op-key kapsamı: tenant/link/entry eksikse hata; biçim sabit", () => {
   assert.equal(opKeyOf({ tenant: "yz2", linkId: "lnk1", entryId: "e42" }), "yz2/lnk1/e42");
   assert.throws(() => opKeyOf({ tenant: "yz2", linkId: "", entryId: "e1" }));
   assert.throws(() => opKeyOf({ tenant: "yz2", linkId: "l", entryId: null }));
+});
+
+test("op-key ayraç çakışması üretilemez: bileşendeki '/' kodlanır, ayraç tek anlamlıdır", () => {
+  // Klasik çakışma çifti: (a/b, c) ile (a, b/c) ham birleştirmede aynı anahtarı verirdi.
+  const k1 = opKeyOf({ tenant: "a/b", linkId: "c", entryId: "d" });
+  const k2 = opKeyOf({ tenant: "a", linkId: "b/c", entryId: "d" });
+  const k3 = opKeyOf({ tenant: "a", linkId: "b", entryId: "c/d" });
+  assert.notEqual(k1, k2);
+  assert.notEqual(k2, k3);
+  assert.notEqual(k1, k3);
+  // Kodlanmış bileşen ham '/' içeremez → anahtar her zaman tam 3 parçaya bölünür
+  for (const k of [k1, k2, k3]) assert.equal(k.split("/").length, 3, k);
+  // Zor karakterler serbest ve güvenli: unicode, boşluk, '%', '?', '#'
+  const tricky = { tenant: "şirket %/?#", linkId: "bağ 100%/%2F", entryId: "kayıt?\u0001" };
+  const kt = opKeyOf(tricky);
+  assert.equal(kt.split("/").length, 3);
+  assert.deepEqual(parseOpKey(kt), tricky, "round-trip birebir");
+  assert.deepEqual(parseOpKey(k1), { tenant: "a/b", linkId: "c", entryId: "d" });
+  // Bozuk anahtar reddedilir
+  assert.throws(() => parseOpKey("tek-parca"));
+  assert.throws(() => parseOpKey("a/b/c/d"));
+  assert.throws(() => parseOpKey("%zz/b/c"));
+});
+
+test("fingerprintPayload: girdi sözleşmesi — içerik+ham metin+SIRALI ek hash'leri; taşıma meta'sı yok", () => {
+  const base = { fields: { quantity: 3, customer_id: "c1" }, rawText: "ham", attachmentHashes: ["h1", "h2"] };
+  // alan anahtar sırası sonucu değiştirmez (kararlı serileştirme)
+  assert.equal(
+    fingerprintPayload({ ...base, fields: { customer_id: "c1", quantity: 3 } }),
+    fingerprintPayload(base)
+  );
+  // ek İÇERİĞİ değişirse payload değişir
+  assert.notEqual(fingerprintPayload({ ...base, attachmentHashes: ["h1", "hX"] }), fingerprintPayload(base));
+  // ek SIRASI değişirse payload değişir (sıra da içeriktir)
+  assert.notEqual(fingerprintPayload({ ...base, attachmentHashes: ["h2", "h1"] }), fingerprintPayload(base));
+  // miktar/müşteri değişirse payload değişir (sessiz kabul engelinin temeli)
+  assert.notEqual(fingerprintPayload({ ...base, fields: { ...base.fields, quantity: 4 } }), fingerprintPayload(base));
+  // taşıma meta'sı sözleşmede YOK: fonksiyon imzasında karşılığı olmadığı için
+  // çağıran ne kadar meta basarsa bassın payload'a sızamaz
+  const payload = fingerprintPayload(base);
+  for (const metaKey of ["sent_at", "received_at", "retry_no", "channel"])
+    assert.ok(!payload.includes(metaKey), metaKey + " payload'a sızdı!");
 });
 
 test("canonicalStringify: anahtar sırasından bağımsız aynı içerik aynı metin", () => {

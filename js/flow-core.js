@@ -80,10 +80,29 @@ const pass = (extra) => ({ ok: true, ...(extra || {}) });
 // ---------------------------------------------------------------- op-key sözleşmesi
 // Kalıcı işlem anahtarı kapsamı: şirket(tenant) / bağlantı(linkId) / kayıt(entryId).
 // Aynı şirkette aynı bağlantıdan aynı entry ancak bir kez işlem açar.
+//
+// AYRAÇ ÇAKIŞMASI KANITI: bileşenler encodeURIComponent ile kodlanır; bu kodlama "/"
+// karakterini "%2F"ye çevirir, dolayısıyla kodlanmış bileşen ASLA ham "/" içermez.
+// Sonuç: anahtardaki "/" yalnızca gerçek ayraçtır. (tenant="a/b", linkId="c", entryId="d")
+// ile (tenant="a", linkId="b/c", entryId="d") FARKLI anahtarlar üretir — çakışma üretilemez.
+// Bileşen karakterlerinde kısıt yoktur (unicode, boşluk, "%", "?" serbesttir).
+const enc = (s) => encodeURIComponent(s);
+
 export function opKeyOf({ tenant, linkId, entryId }) {
   for (const [k, v] of [["tenant", tenant], ["linkId", linkId], ["entryId", entryId]])
     if (!v || typeof v !== "string") throw Error("op-key eksik: " + k);
-  return tenant + "/" + linkId + "/" + entryId;
+  return enc(tenant) + "/" + enc(linkId) + "/" + enc(entryId);
+}
+
+// Ters çözüm (denetim/görüntüleme içindir; yetki kanıtı DEĞİL). Round-trip garantili.
+export function parseOpKey(key) {
+  const parts = String(key || "").split("/");
+  if (parts.length !== 3) throw Error("op-key biçimi bozuk: 3 bileşen bekleniyor");
+  try {
+    return { tenant: decodeURIComponent(parts[0]), linkId: decodeURIComponent(parts[1]), entryId: decodeURIComponent(parts[2]) };
+  } catch {
+    throw Error("op-key çözülemedi (bozuk kodlama)");
+  }
 }
 
 // İçerik parmak izi için kararlı (anahtar-sıralı) JSON — hash hesabı service'te (async) yapılır.
@@ -91,6 +110,21 @@ export function canonicalStringify(v) {
   if (v === null || typeof v !== "object") return JSON.stringify(v);
   if (Array.isArray(v)) return "[" + v.map(canonicalStringify).join(",") + "]";
   return "{" + Object.keys(v).sort().map((k) => JSON.stringify(k) + ":" + canonicalStringify(v[k])).join(",") + "}";
+}
+
+// ---------------------------------------------------------------- parmak izi sözleşmesi
+// Fingerprint girdileri YALNIZCA bunlardır:
+//   1) fields      — iş içeriği (tarih, müşteri, şantiye, araç, miktar, birim fiyat...)
+//   2) rawText     — ham kaynak metin
+//   3) attachments — eklerin İÇERİK hash'leri (SHA-256 hex), SIRALI liste — ek sırası da içeriktir
+// Kimlik (tenant/linkId/entryId) fingerprint'e GİRMEZ — o kapsam op-key'de zaten var.
+// Taşıma bilgisi (alınma/gönderim zamanı, yeniden gönderim sayısı, kanal meta'sı) fingerprint'e
+// GİRMEZ: yeniden gönderim içeriği değiştirmez; dahil edilseydi sahte OP_CONFLICT üretirdi.
+// Tersi de zorunludur: miktar/müşteri/EK İÇERİĞİ değişimi aynı op-id ile SESSİZCE kabul EDİLMEZ
+// (fingerprint değişir → OP_CONFLICT).
+// NOT: hash yalnız bütünlük karşılaştırmasıdır — yetkilendirme veya değişmezlik garantisi DEĞİLDİR.
+export function fingerprintPayload({ fields, rawText, attachmentHashes = [] }) {
+  return canonicalStringify({ attachments: attachmentHashes, fields: fields || {}, rawText: rawText || "" });
 }
 
 // Aynı/farklı içerik kararı:

@@ -229,9 +229,10 @@ async function openOfficeDetail(id) {
     be.onclick = async () => {
       const reason = $("#of-edit-reason").value.trim();
       const fields = { ...r.fields, quantity: Number($("#of-edit-q").value) || r.fields.quantity, note: $("#of-edit-n").value.trim() };
-      try { await rpc("edit_report", { p_report_id: r.id, p_fields: fields, p_reason: reason, p_expected_version: r.version }); msg("Düzenleme kaydedildi.", "ok"); }
-      catch (e) { msg(e.message, "err"); }
+      try { await rpc("edit_report", { p_report_id: r.id, p_fields: fields, p_reason: reason, p_expected_version: r.version }); }
+      catch (e) { msg(e.message, "err"); return; }
       await openOfficeDetail(r.id); await renderOffice();
+      msg("Düzenleme kaydedildi.", "ok");
     };
     act.appendChild(be);
     const bc = document.createElement("button");

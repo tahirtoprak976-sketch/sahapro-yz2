@@ -287,7 +287,7 @@ Assert sayısı kalite ölçütü değildir; aşağıda dosya, girdi ve senaryo 
   API içeriğini önce/sonra birebir karşılaştırır; tarayıcıya eklenen tek veritabanı `flowlab_sp1_*`
   olmalıdır.
 - **Hata enjeksiyonu katmanı:** `failAt` kancası (`'attachments'` alım ek yazımı; `'work' | 'attachment' | 'approval' | 'audit'` finalize) tx **içinde** bilinçli hata fırlatır. Üretim yolu bu kancayı kullanmaz; varlığı abort anlambilimini kanıtlamak içindir.
-- Sahte-depolama ile gerçek tarayıcı sonuçları ayrı raporlanır: **node 109/109** (65 mevcut + 15 çekirdek + 19 servis + 10 SP1), **tarayıcı 8/8 + 10/10**. Ana uygulamanın sertleştirme regresyonu (`tests/hardening_browser_test.py`) bu değişikliklerle yeniden koşuldu: **11/11** (hoş geldin ekranı tek başına regresyon sayılmamıştır; 11 senaryonun tamamı gerçek asistan/güvenlik/yedekleme/çevrimdışı akışlarıdır).
+- Sahte-depolama ile gerçek tarayıcı sonuçları ayrı raporlanır: **node 58/58 test dosyası PASS** (temiz dal kopyası koşusu, 2026-10-18; TAP sayımlı dosyalar: çekirdek 15, servis 19, SP1 10, sertleştirme red-team 11; `sw-assets` 105 modül kontrolü OK; kalan 53 mevcut dosyada toplam 95 senaryo satırı PASS/ok, 0 FAIL), **tarayıcı 8/8 + 10/10**. Ana uygulamanın sertleştirme regresyonu (`tests/hardening_browser_test.py`) bu değişikliklerle yeniden koşuldu: **11/11** (hoş geldin ekranı tek başına regresyon sayılmamıştır; 11 senaryonun tamamı gerçek asistan/güvenlik/yedekleme/çevrimdışı akışlarıdır).
 
 ## Veri temizliği ve geri dönüş (bu dal)
 

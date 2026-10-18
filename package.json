@@ -1,0 +1,12 @@
+{
+  "name": "sahapro-yz2",
+  "private": true,
+  "type": "module",
+  "description": "SAHAPRO YZ2 — deneysel geliştirme kopyası (statik PWA). package.json yalnız test bağımlılıkları içindir; uygulama derleme gerektirmez.",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs"
+  },
+  "devDependencies": {
+    "fake-indexeddb": "^6.2.2"
+  }
+}

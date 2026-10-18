@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#091d30" />
+    <!-- Laboratuvar ekranı: yalnız kendi dosyaları. Ağ erişimi YOK (sunucu da yok, Gemini'ye gönderim de yok). -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; form-action 'self'" />
+    <title>SAHAPRO YZ2 — Onay Akışı Laboratuvarı</title>
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+      body { margin: 0; padding-bottom: 40px; }
+      .lab-banner {
+        position: sticky; top: 0; z-index: 50;
+        background: #5a1a1a; color: #ffd9d9; border-bottom: 2px solid #c0392b;
+        padding: 10px 14px; font-size: 13px; line-height: 1.5;
+      }
+      .lab-banner b { color: #fff; }
+      .lab-wrap { max-width: 720px; margin: 0 auto; padding: 14px; }
+      .lab-card {
+        background: var(--bg2); border: 1px solid #223349; border-radius: 10px;
+        padding: 14px; margin-bottom: 14px;
+      }
+      .lab-card h2 { margin: 0 0 10px; font-size: 15px; color: var(--text); }
+      .lab-card h3 { margin: 12px 0 6px; font-size: 13px; color: var(--muted); }
+      .lab-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0; }
+      .lab-field { display: flex; flex-direction: column; gap: 3px; flex: 1 1 45%; }
+      .lab-field label { font-size: 11px; color: var(--muted); }
+      .lab-field input, .lab-field textarea, .lab-field select {
+        background: #0b1725; color: var(--text); border: 1px solid #2a3d55;
+        border-radius: 6px; padding: 7px 9px; font-size: 13px; font-family: inherit;
+      }
+      .lab-btn {
+        background: var(--accent2); color: #fff; border: 0; border-radius: 7px;
+        padding: 9px 14px; font-size: 13px; cursor: pointer; font-family: inherit;
+      }
+      .lab-btn.secondary { background: #2a3d55; }
+      .lab-btn.danger { background: #8e2f2f; }
+      .lab-btn:disabled { opacity: .45; cursor: not-allowed; }
+      .lab-chip {
+        display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11px;
+        background: #223349; color: var(--muted); margin-right: 6px;
+      }
+      .lab-state { font-weight: 700; padding: 3px 10px; border-radius: 20px; font-size: 12px; }
+      .st-gonderildi { background: #1d3a5f; color: #9ec5fe; }
+      .st-kontrolde { background: #4a3b12; color: #f5d76e; }
+      .st-onay_bekliyor { background: #173d2a; color: #7ddfa0; }
+      .st-onaylandi { background: #14532d; color: #86efac; }
+      .st-teknik_hata { background: #5a1a1a; color: #fca5a5; }
+      .st-reddedildi, .st-iptal { background: #3b3b3b; color: #d4d4d4; }
+      .st-duzeltme_istendi { background: #4a2512; color: #fdba74; }
+      .lab-item {
+        border: 1px solid #223349; border-radius: 8px; padding: 9px 11px; margin: 6px 0;
+        cursor: pointer; font-size: 13px;
+      }
+      .lab-item:hover { border-color: var(--accent); }
+      .lab-mono { font-family: ui-monospace, monospace; font-size: 11px; color: var(--muted); word-break: break-all; }
+      .lab-kv { font-size: 12px; color: var(--muted); margin: 2px 0; }
+      .lab-kv b { color: var(--text); font-weight: 600; }
+      #lab-log { font-size: 12px; max-height: 150px; overflow: auto; }
+      #lab-log div { padding: 3px 0; border-bottom: 1px dashed #223349; }
+      .log-err { color: #fca5a5; }
+      .log-ok { color: #86efac; }
+      .lab-note { font-size: 11px; color: var(--muted2); margin-top: 8px; line-height: 1.5; }
+      #history-list div { font-size: 12px; padding: 4px 0; border-bottom: 1px dashed #223349; color: var(--muted); }
+      #history-list b { color: var(--text); }
+      .lab-warn { background: #4a3b12; border: 1px solid #8a6d1a; color: #f5d76e; border-radius: 8px; padding: 8px 10px; font-size: 12px; margin: 6px 0; }
+      .lab-okbox { background: #173d2a; border: 1px solid #20653f; color: #7ddfa0; border-radius: 8px; padding: 8px 10px; font-size: 12px; margin: 6px 0; }
+      .lab-errbox { background: #5a1a1a; border: 1px solid #c0392b; color: #fca5a5; border-radius: 8px; padding: 8px 10px; font-size: 12px; margin: 6px 0; }
+      .lab-diff { font-size: 12px; color: var(--muted); padding: 4px 0; border-bottom: 1px dashed #223349; }
+      .lab-diff b { color: var(--text); }
+      details.lab-details { font-size: 12px; color: var(--muted); margin: 4px 0; }
+      details.lab-details summary { cursor: pointer; color: var(--text); }
+      details.lab-details pre {
+        white-space: pre-wrap; word-break: break-all; background: #0b1725; border: 1px solid #223349;
+        border-radius: 6px; padding: 8px; font-size: 11px; max-height: 160px; overflow: auto;
+      }
+      #sp1-out { width: 100%; box-sizing: border-box; }
+      #sp1-paste { width: 100%; box-sizing: border-box; }
+    </style>
+  </head>
+  <body>
+    <noscript>Bu ekran JavaScript gerektirir.</noscript>
+    <div class="lab-banner" id="lab-banner">
+      <b>LABORATUVAR</b> — aktör etiketleri (<span class="lab-mono">ofis1</span> / <span class="lab-mono">yon1</span>)
+      <b>gerçek kullanıcı yetkilendirmesi değildir</b>; yalnız işlem kayıtlarını etiketler.
+      Bu ekran ayrı bir deney veritabanında (<span class="lab-mono" id="lab-dbname"></span>) ve yalnız
+      <b>TEST-</b> önekli örnek veriyle çalışır. Sunucu yoktur: veriler bu cihazdan dışarı gönderilmez,
+      başka telefonla paylaşılmaz, Gemini'ye gönderilmez. Ana uygulama kayıtlarına dokunmaz.
+      İmza doğrulaması gerçek kişi kimliğini veya işin gerçekten yapıldığını <b>kanıtlamaz</b>.
+    </div>
+
+    <div class="lab-wrap">
+      <!-- 0. Lab şoför bağlantıları -->
+      <div class="lab-card">
+        <h2>0) Lab şoför bağlantısı</h2>
+        <div class="lab-note" style="margin-top:0">
+          Bağlantılar ve imza anahtarları yalnız bu lab veritabanında üretilir ve saklanır.
+          Ana uygulamanın bağlantılarına veya veritabanına bakılmaz; üretim anahtarı koda gömülmez.
+        </div>
+        <div class="lab-row">
+          <div class="lab-field"><label>Şoför adı (örnek)</label><input id="l-name" value="TEST-Şoför Ali" /></div>
+          <div class="lab-field"><label>Geçerlilik</label>
+            <select id="l-days"><option value="30">30 gün</option><option value="180" selected>180 gün</option><option value="-1">Süresi dolmuş (test)</option></select>
+          </div>
+        </div>
+        <div class="lab-row"><button class="lab-btn" id="btn-link">Bağlantı oluştur</button></div>
+        <div id="links-list"><span class="lab-note">Henüz bağlantı yok.</span></div>
+      </div>
+
+      <!-- 1. Örnek SP1 üretimi -->
+      <div class="lab-card">
+        <h2>1) Örnek SP1 bildirimi üret</h2>
+        <div class="lab-note" style="margin-top:0">
+          Mesaj, mevcut şoför uygulamasının gerçek üretici koduyla (driver-core.js) oluşturulur;
+          imza seçili lab bağlantısının anahtarıyla atılır. Üretimde bu mesaj şoförün telefonundan gelir.
+        </div>
+        <div class="lab-row">
+          <div class="lab-field"><label>Bağlantı</label><select id="s-link"></select></div>
+          <div class="lab-field"><label>Kayıt (entryId)</label><input id="f-entryId" value="e100" /></div>
+        </div>
+        <div class="lab-row">
+          <div class="lab-field"><label>Tarih</label><input id="f-date" value="2026-10-18" /></div>
+          <div class="lab-field"><label>Araç</label><input id="f-vehicle" value="TEST-34 ABC 01" /></div>
+        </div>
+        <div class="lab-row">
+          <div class="lab-field"><label>Müşteri</label><input id="f-customer" value="TEST-Müşteri A" /></div>
+          <div class="lab-field"><label>Şantiye</label><input id="f-site" value="TEST-Ümraniye" /></div>
+        </div>
+        <div class="lab-row">
+          <div class="lab-field"><label>İş tipi</label><input id="f-worktype" value="Hafriyat Nakliye" /></div>
+          <div class="lab-field"><label>Miktar (metin)</label><input id="f-quantity" type="number" value="3" /></div>
+          <div class="lab-field"><label>Birim</label><input id="f-unit" value="Sefer" /></div>
+        </div>
+        <div class="lab-row">
+          <div class="lab-field"><label>Fiş tonajı (ayrı alan — metin miktarının üzerine yazılmaz)</label><input id="f-tonnage" type="number" step="0.1" placeholder="boş bırakılabilir" /></div>
+          <div class="lab-field"><label>Fiş no</label><input id="f-slip" placeholder="örn. TEST-FİŞ-001" /></div>
+          <div class="lab-field"><label>Fotoğraf beyanı (📷 sayısı)</label><input id="f-ph" type="number" value="0" min="0" /></div>
+        </div>
+        <div class="lab-row"><button class="lab-btn" id="btn-make-sp1">SP1 mesajı üret → aşağıya koy</button></div>
+        <div class="lab-row"><textarea id="sp1-out" rows="4" readonly placeholder="Üretilen mesaj burada görünür"></textarea></div>
+      </div>
+
+      <!-- 2. SP1 doğrulama ve alım -->
+      <div class="lab-card">
+        <h2>2) SP1 paketini yapıştır — doğrula ve al</h2>
+        <div class="lab-note" style="margin-top:0">
+          Paket <b>otomatik onaylanmaz</b>: doğrulama geçen her iş kaydı ayrı bildirim olarak
+          "gonderildi" durumunda açılır; inceleme ve onay aşağıdaki akıştan, ayrı aktör etiketleriyle yapılır.
+          Tanınmayan, imzasız, değiştirilmiş, iptal edilmiş, süresi dolmuş veya yanlış personelle ilişkili
+          paket <b>reddedilir</b> — reddedilen paketin okunur metninden iş üretilmez.
+        </div>
+        <div class="lab-row"><textarea id="sp1-paste" rows="4" placeholder="SP1 mesajını buraya yapıştırın"></textarea></div>
+        <div class="lab-row"><button class="lab-btn" id="btn-sp1-intake">Doğrula ve al</button></div>
+        <div id="sp1-result"></div>
+      </div>
+
+      <!-- 3. Manuel TEST paketi (ham, SP1'siz) -->
+      <div class="lab-card">
+        <details class="lab-details">
+          <summary>3) Manuel TEST paketi (SP1'siz doğrudan alım — çekirdek deneyleri için)</summary>
+          <div class="lab-row" style="margin-top:8px">
+            <div class="lab-field"><label>Bağlantı (linkId)</label><input id="f-linkId" value="lnk_test1" /></div>
+          </div>
+          <div class="lab-row">
+            <div class="lab-field"><label>Ham kaynak metin</label><textarea id="f-raw" rows="2">TEST- 34 ABC 01 Ümraniye şantiyesi 3 sefer hafriyat</textarea></div>
+          </div>
+          <div class="lab-row">
+            <label style="font-size:12px;color:var(--muted)"><input type="checkbox" id="f-attach" /> TEST ek ekle (örnek bayt dizisi)</label>
+          </div>
+          <div class="lab-row">
+            <button class="lab-btn secondary" id="btn-intake">Manuel bildirimi al</button>
+            <span class="lab-note">Alanlar yukarıdaki 1. karttan okunur. Aynı paketi tekrar almak yeni kayıt AÇMAZ.</span>
+          </div>
+        </details>
+      </div>
+
+      <!-- 4. Lab kayıtları -->
+      <div class="lab-card">
+        <h2>4) Lab kayıtları</h2>
+        <div id="reports-list"><span class="lab-note">Henüz kayıt yok.</span></div>
+        <div class="lab-row">
+          <button class="lab-btn secondary" id="btn-refresh">Yenile</button>
+          <button class="lab-btn danger" id="btn-reset">Lab veritabanını sil</button>
+        </div>
+        <div class="lab-note">Silme yalnız lab veritabanını temizler; ana uygulama veritabanına dokunulmaz.</div>
+      </div>
+
+      <!-- 5. Reddedilen paketler -->
+      <div class="lab-card">
+        <h2>5) Reddedilen paketler (kanıt kaydı)</h2>
+        <div id="rejections-list"><span class="lab-note">Reddedilen paket yok.</span></div>
+      </div>
+
+      <!-- 6. Seçili kayıt detayı + işlemler -->
+      <div class="lab-card" id="detail-card" hidden>
+        <h2>6) Kayıt inceleme / onay</h2>
+        <div id="d-head"></div>
+        <h3>Teslim zarfları (değişmez kanıt)</h3>
+        <div id="d-source"></div>
+        <h3>Ekler</h3>
+        <div id="d-attachments"></div>
+        <div id="d-media"></div>
+        <h3>Güncel alanlar (revizyon <span id="d-rev"></span>)</h3>
+        <div id="d-fields"></div>
+        <h3>Revizyon farkları (eski → yeni, gerekçeyle)</h3>
+        <div id="d-diffs"><span class="lab-note">Düzeltme yok.</span></div>
+        <h3>İşlemler</h3>
+        <div class="lab-row" id="d-actions"></div>
+        <div class="lab-row" id="d-reason-row" hidden>
+          <div class="lab-field"><label>Gerekçe</label><input id="reason-input" placeholder="zorunlu" /></div>
+        </div>
+        <div id="work-view"></div>
+        <h3>Geçmiş (audit)</h3>
+        <div id="history-list"></div>
+      </div>
+
+      <!-- günlük -->
+      <div class="lab-card">
+        <h2>Günlük</h2>
+        <div id="lab-log"></div>
+      </div>
+    </div>
+
+    <script type="module" src="js/flow-lab-ui.js"></script>
+  </body>
+</html>

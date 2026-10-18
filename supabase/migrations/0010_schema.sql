@@ -110,7 +110,7 @@ create index if not exists audit_report_idx on public.audit (report_id);
 -- canonicalStringify ile bayt-eşitliği iddia edilmez; fingerprint yalnız sunucuda
 -- sunucunun ürettiği değerlerle karşılaştırılır).
 create or replace function public.flow_fingerprint(p_fields jsonb, p_entry jsonb, p_attachments jsonb default '[]'::jsonb)
-returns text language sql immutable as $$
+returns text language sql immutable set search_path = public, pg_temp as $$
   select encode(digest(
     jsonb_build_object(
       'attachments', coalesce(p_attachments, '[]'::jsonb),
@@ -122,7 +122,7 @@ $$;
 
 -- Alan farkı: {alan: {from, to}} — eksik anahtar ile null değer bu dilimde aynı sayılır
 create or replace function public.jsonb_diff(a jsonb, b jsonb)
-returns jsonb language sql immutable as $$
+returns jsonb language sql immutable set search_path = public, pg_temp as $$
   select coalesce(jsonb_object_agg(k.key, jsonb_build_object('from', a -> k.key, 'to', b -> k.key)), '{}'::jsonb)
   from (
     select distinct key

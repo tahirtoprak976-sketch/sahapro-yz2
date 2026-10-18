@@ -20,7 +20,7 @@
 -- ---- iç yardımcılar (API'ye açılmaz; EXECUTE grant'i verilmez) ----
 
 create or replace function public._req_uid() returns uuid
-language plpgsql stable
+language plpgsql stable set search_path = public, pg_temp
 as $$
 declare v uuid;
 begin

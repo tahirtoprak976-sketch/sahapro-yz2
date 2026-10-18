@@ -159,7 +159,9 @@ test("H8: bağlantı kapanıp açılır → bekleyen bildirim ve durumu aynen du
   const svc2 = createFlowService({ store: store2, config });
   const r = await store2.get("reports", inr.report.id);
   assert.equal(r.state, "kontrolde");
-  assert.equal(r.source.rawText, pkt().rawText, "ham kaynak korunur");
+  // Ham kaynak artık rapor gövdesinde değil, sources store'da (zarf kanıtı) — korunduğu oradan doğrulanır
+  const src = await store2.get("sources", r.source_ids[0]);
+  assert.equal(src.raw_text, pkt().rawText, "ham kaynak korunur");
   const out = await svc2.completeCheck(inr.report.id, OFIS, r.version);
   assert.equal(out.state, "onay_bekliyor");
 });

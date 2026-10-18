@@ -83,11 +83,17 @@ test("op-key ayraç çakışması üretilemez: bileşendeki '/' kodlanır, ayra�
   assert.throws(() => parseOpKey("%zz/b/c"));
 });
 
-test("fingerprintPayload: girdi sözleşmesi — içerik+ham metin+SIRALI ek hash'leri; taşıma meta'sı yok", () => {
-  const base = { fields: { quantity: 3, customer_id: "c1" }, rawText: "ham", attachmentHashes: ["h1", "h2"] };
+test("fingerprintPayload: girdi sözleşmesi — alanlar+HAM KAYIT(entry)+SIRALI ek hash'leri; zarf/taşıma meta'sı yok", () => {
+  const entry = { id: "e1", date: "2026-10-18", vid: "v1", cid: "c1", wt: "Hafriyat Nakliye", q: 3, u: "Sefer" };
+  const base = { fields: { quantity: 3, customer_id: "c1" }, entry, attachmentHashes: ["h1", "h2"] };
   // alan anahtar sırası sonucu değiştirmez (kararlı serileştirme)
   assert.equal(
     fingerprintPayload({ ...base, fields: { customer_id: "c1", quantity: 3 } }),
+    fingerprintPayload(base)
+  );
+  // entry anahtar sırası da sonucu değiştirmez
+  assert.equal(
+    fingerprintPayload({ ...base, entry: { u: "Sefer", q: 3, wt: "Hafriyat Nakliye", cid: "c1", vid: "v1", date: "2026-10-18", id: "e1" } }),
     fingerprintPayload(base)
   );
   // ek İÇERİĞİ değişirse payload değişir
@@ -96,10 +102,14 @@ test("fingerprintPayload: girdi sözleşmesi — içerik+ham metin+SIRALI ek has
   assert.notEqual(fingerprintPayload({ ...base, attachmentHashes: ["h2", "h1"] }), fingerprintPayload(base));
   // miktar/müşteri değişirse payload değişir (sessiz kabul engelinin temeli)
   assert.notEqual(fingerprintPayload({ ...base, fields: { ...base.fields, quantity: 4 } }), fingerprintPayload(base));
-  // taşıma meta'sı sözleşmede YOK: fonksiyon imzasında karşılığı olmadığı için
+  // entry İÇERİĞİ değişirse payload değişir (aynı entry kimliğiyle miktar değişimi sessizce geçemez)
+  assert.notEqual(fingerprintPayload({ ...base, entry: { ...entry, q: 9 } }), fingerprintPayload(base));
+  // ZARF değişimi payload'a GİRMEZ: payload girdisi yalnız {fields, entry, attachments} üçlüsüdür;
+  // aynı işin farklı paket zarfıyla yeniden gönderimi gerçek içerik değişikliği değildir (SP1-3/T3 kanıtı).
+  // taşıma/zarf meta'sı sözleşmede YOK: fonksiyon imzasında karşılığı olmadığı için
   // çağıran ne kadar meta basarsa bassın payload'a sızamaz
   const payload = fingerprintPayload(base);
-  for (const metaKey of ["sent_at", "received_at", "retry_no", "channel"])
+  for (const metaKey of ["sent_at", "received_at", "retry_no", "channel", "rawText", "envelope", "_code", "_sig"])
     assert.ok(!payload.includes(metaKey), metaKey + " payload'a sızdı!");
 });
 

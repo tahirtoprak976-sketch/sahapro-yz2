@@ -77,7 +77,7 @@ değildir**, yetki sunucuda denetlenir):
 - **Yönetici**: onay bekleyenler → kontrol edilmiş revizyon bilgisi → onayla / reddet (sebep zorunlu)
 
 Yalnız TEST verisi (araç/müşteri adları TEST- öneki). SOLO/YZ2 verileri sunucuya taşınmaz;
- otomatik geçiş yok.
+otomatik geçiş yok.
 
 ## 6. Bilinçli sınırlar ve notlar
 

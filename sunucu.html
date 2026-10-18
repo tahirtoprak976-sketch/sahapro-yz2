@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; connect-src 'self' http://127.0.0.1:53001 http://127.0.0.1:53002 http://localhost:53001 http://localhost:53002; img-src 'self' data:; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'self'; form-action 'self'" />
+<title>SAHAPRO YZ2 — Sunucu Dilimi (TEST)</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+  .lab-banner { position: sticky; top: 0; z-index: 10; background: #7f1d1d; color: #fff;
+    padding: 8px 12px; font-size: 13px; line-height: 1.4; }
+  .lab-wrap { max-width: 760px; margin: 0 auto; padding: 12px; }
+  .lab-card { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 14px; margin-bottom: 14px; }
+  .lab-field { margin-bottom: 10px; }
+  .lab-field label { display: block; font-size: 13px; color: #444; margin-bottom: 4px; }
+  .lab-field input, .lab-field select { width: 100%; box-sizing: border-box; padding: 8px;
+    border: 1px solid #ccc; border-radius: 8px; font-size: 15px; }
+  .lab-btn { display: inline-block; background: #0f766e; color: #fff; border: 0; border-radius: 8px;
+    padding: 9px 14px; font-size: 14px; cursor: pointer; margin: 4px 4px 4px 0; }
+  .lab-btn-ghost { background: #e5e7eb; color: #111; }
+  .row { border-top: 1px solid #eee; padding: 10px 0; }
+  .dim { color: #666; font-size: 12.5px; }
+  .msg { display: none; padding: 10px; border-radius: 8px; margin: 10px 0; font-size: 14px; }
+  .msg-ok { background: #dcfce7; color: #166534; }
+  .msg-err { background: #fee2e2; color: #991b1b; }
+  .msg-info { background: #e0f2fe; color: #075985; }
+  .btn-row { margin-top: 8px; }
+  .chip { display: inline-block; background: #f3f4f6; border-radius: 6px; padding: 4px 8px;
+    margin: 2px 4px 2px 0; font-size: 12px; cursor: pointer; }
+  h3 { margin: 4px 0 10px; } h4 { margin: 12px 0 6px; } h5 { margin: 10px 0 4px; }
+</style>
+</head>
+<body>
+<div class="lab-banner">
+  <b>YZ2 SUNUCU DİLİMİ — YALNIZ GELİŞTİRME DALI / TEST VERİSİ.</b><br />
+  Bu ekran yerel geliştirme sunucusuna (127.0.0.1) bağlanır; canlı veri taşımaz.
+  Rol gösterimi yalnız ekran düzenidir — yetki sunucuda (RPC + RLS) denetlenir.
+  "Sunucu aldı", "yönetici onayladı" demek değildir. Web uygulaması kapalıyken arka planda çalışmaz.
+</div>
+<div class="lab-wrap">
+
+  <div class="lab-card" id="login-card">
+    <h3>Oturum aç</h3>
+    <form id="login-form">
+      <div class="lab-field"><label>E-posta</label><input id="email" type="email" required autocomplete="username" /></div>
+      <div class="lab-field"><label>Parola</label><input id="password" type="password" required autocomplete="current-password" /></div>
+      <button class="lab-btn" type="submit">Giriş</button>
+    </form>
+    <p class="dim">TEST hesapları (doldurmak için dokunun):</p>
+    <div>
+      <span class="chip" data-fill="test-sofor-1@example.invalid">Şoför 1 (A)</span>
+      <span class="chip" data-fill="test-ofis-1@example.invalid">Ofis 1 (A)</span>
+      <span class="chip" data-fill="test-yonetici-1@example.invalid">Yönetici 1 (A)</span>
+      <span class="chip" data-fill="test-yonetici-2@example.invalid">Yönetici 2 (A)</span>
+      <span class="chip" data-fill="test-rakip-sofor@example.invalid">Şoför (B)</span>
+    </div>
+  </div>
+
+  <div id="app" style="display:none">
+    <div class="lab-card">
+      <b id="who"></b> <span class="dim" id="who-roles"></span>
+      <button class="lab-btn lab-btn-ghost" id="logout">Çıkış</button>
+    </div>
+    <div id="msg"></div>
+
+    <div class="lab-card" id="panel-sofor">
+      <h3>Şoför — bildirim gönder</h3>
+      <form id="drv-form">
+        <div class="lab-field"><label>Tarih</label><input id="drv-date" type="date" required /></div>
+        <div class="lab-field"><label>Araç</label><select id="drv-vehicle"></select></div>
+        <div class="lab-field"><label>Müşteri</label><select id="drv-customer"></select></div>
+        <div class="lab-field"><label>İş tipi</label><select id="drv-worktype"></select></div>
+        <div class="lab-field"><label>Miktar</label><input id="drv-quantity" type="number" min="1" required /></div>
+        <div class="lab-field"><label>Birim</label>
+          <select id="drv-unit"><option>Sefer</option><option>m³</option></select></div>
+        <div class="lab-field"><label>Not</label><input id="drv-note" placeholder="TEST notu" /></div>
+        <button class="lab-btn" type="submit">Kuyruğa al ve gönder</button>
+        <button class="lab-btn lab-btn-ghost" id="drv-refresh" type="button">Durumları yenile</button>
+      </form>
+      <div id="drv-list"></div>
+    </div>
+
+    <div class="lab-card" id="panel-ofis">
+      <h3>Ofis — bekleyen bildirimler</h3>
+      <button class="lab-btn lab-btn-ghost" id="ofis-refresh" type="button">Listeyi yenile</button>
+      <div id="ofis-list"></div>
+      <div id="ofis-detail" style="display:none"></div>
+    </div>
+
+    <div class="lab-card" id="panel-yonetici">
+      <h3>Yönetici — onay bekleyenler</h3>
+      <button class="lab-btn lab-btn-ghost" id="yon-refresh" type="button">Listeyi yenile</button>
+      <div id="yon-list"></div>
+      <div id="yon-detail" style="display:none"></div>
+    </div>
+  </div>
+</div>
+<script type="module" src="js/sunucu-ui.js"></script>
+</body>
+</html>

@@ -19,12 +19,27 @@ sözleşmeyi yerelde doğrulamak. Bu dilimde canlı yayın, dış hesap ve gerç
 - Komutlar:
 
 ```bash
-python3 tests/server_local_stack.py up     # küme + migration'lar + servisler + TEST tohumu
-python3 tests/sunucu_api_test.py           # API kabul + saldırgan senaryolar (33 kontrol)
-python3 tests/sunucu_browser_test.py       # 3 oturumlu tarayıcı kabul suiti (17 kontrol)
-python3 tests/server_local_stack.py down   # servisleri durdur (küme kalır)
-python3 tests/server_local_stack.py wipe   # HER ŞEYİ sil (geri dönüş = tam temizlik)
+python3 tests/server_local_stack.py up       # küme + migration'lar + servisler + TEST tohumu
+python3 tests/sunucu_api_test.py             # API kabul + saldırgan senaryolar (33 kontrol)
+python3 tests/sunucu_browser_test.py         # 3 oturumlu tarayıcı kabul suiti (17 kontrol)
+python3 tests/sunucu_rpc_denetim_test.py     # SECURITY DEFINER/yetki yüzeyi denetimi (27 kontrol)
+python3 tests/sunucu_oturum_kuyruk_test.py   # oturum + kuyruk sahibi kilidi (13 kontrol)
+python3 tests/sunucu_yedek_test.py           # yedek → ayrı DB'ye geri yükleme kanıtı (17 kontrol)
+python3 tests/server_local_stack.py down     # servisleri durdur (küme kalır)
+python3 tests/server_local_stack.py backup yedek.dump            # yedek al
+python3 tests/server_local_stack.py restore yedek.dump yz2_geri  # ayrı/boş DB'ye geri yükle
+python3 tests/server_local_stack.py wipe --evet                  # HER ŞEYİ sil (VERİ SİLME — geri dönüş değil)
 ```
+
+- **Sürüm ve bütünlük sabitlemesi**: binary'ler yalnız resmi kanallardan kurulur
+  (GitHub release varlıkları; GoTrue için ayrıca resmi `ghcr.io/supabase/auth` OCI imajı)
+  ve `server_local_stack.py` içindeki sha256 pinleriyle doğrulanır — uyuşmazlıkta kurulum
+  durur. Bu oturumda GitHub asset CDN'i ağdan erişilemediği için GoTrue binary'si resmi
+  ghcr imajından çıkarıldı; iki kanalın pinleri ayrı etiketlerle scriptte yazılıdır.
+- **Sır politikası**: jwt_secret çalışma anında üretilir; bilinen örnek/placeholder sırlar
+  ve kısa değerler reddedilir. `/tmp/yz2srv` 0700, sır içeren dosyalar 0600'dır.
+- **wipe koruması**: wipe yalnız açık `--evet` onayı ve `TEST_ORTAMI` işaretiyle çalışır.
+  wipe geri dönüş DEĞİL, veri silmedir; geri dönüş backup/restore iledir.
 
 - İstemci: `sunucu.html` (depo kökünden statik servisle, ör. `python3 -m http.server 8124`).
   Yalnız TEST hesapları: `test-sofor-1@example.invalid`, `test-ofis-1@example.invalid`,

@@ -77,7 +77,7 @@ değildir**, yetki sunucuda denetlenir):
 - **Yönetici**: onay bekleyenler → kontrol edilmiş revizyon bilgisi → onayla / reddet (sebep zorunlu)
 
 Yalnız TEST verisi (araç/müşteri adları TEST- öneki). SOLO/YZ2 verileri sunucuya taşınmaz;
-otomatik geçiş yok.
+ otomatik geçiş yok.
 
 ## 6. Bilinçli sınırlar ve notlar
 
@@ -100,8 +100,11 @@ otomatik geçiş yok.
 ## 7. Geri dönüş / temizlik
 
 - Kod: `yz2-sunucu-dilim` dalı taslak PR'da durur; birleştirilmedikçe ana hat etkilenmez.
-- Yerel yığın: `python3 tests/server_local_stack.py wipe` — küme, binary'ler, çalışma dizini
-  tamamen silinir. Telefon/uygulama verisine dokunmaz (sunucu dilimi ayrı DB'dedir).
+- Yerel yığın: `python3 tests/server_local_stack.py wipe --evet` — küme, binary'ler, çalışma
+  dizini tamamen silinir. **wipe bir geri dönüş çözümü DEĞİLDİR; veri silmedir.** İki koruma
+  vardır: açık `--evet` onayı ve `TEST_ORTAMI` işaret dosyası (ikisi de yoksa reddeder).
+  Telefon/uygulama verisine dokunmaz (sunucu dilimi ayrı DB'dedir).
+- Gerçek geri dönüş = yedekten geri yükleme: `backup` / `restore` komutları (bkz. §9.6).
 
 ## 8. Test kanıtı
 
@@ -111,3 +114,131 @@ otomatik geçiş yok.
   kayıp yanıt sabotajı ve çevrimdışı kuyruk dahil.
 - Regresyon: node 58/58 dosya, akış tarayıcı 8/8, SP1 10/10, sertleştirme suitleri —
   temiz dal kopyasında tekrarlandı.
+
+## 9. Yayın öncesi güvenlik ve kurulum kapısı (ikinci tur, 2026-10-18)
+
+Bu bölüm yeni özellik EKLEMEZ; mevcut dilimin yayın öncesi kapı kontrollerini ve kanıtlarını
+toplar. Testler: `tests/sunucu_rpc_denetim_test.py` (27 kontrol),
+`tests/sunucu_oturum_kuyruk_test.py` (13 kontrol), `tests/sunucu_yedek_test.py` (17 kontrol).
+
+### 9.1 Birleştirme sırası (teslimi sabitleme)
+
+PR zinciri: **PR #3** (`yz2-sunucu-dilim` → base `yz2-akis-cekirdek`) ve
+**PR #2** (`yz2-akis-cekirdek` → base `gh-pages`). Doğru sıra:
+
+1. **Önce PR #3** birleştirilir → sunucu dosyaları çekirdek dalına tek seferde girer.
+2. **Sonra PR #2** birleştirilir → çekirdek + sunucu birlikte gh-pages'e girer.
+3. PR #3'ün base'i **asla elle gh-pages'e çevrilmez**: çevrilirse PR #3, PR #2'nin tüm
+   commit'lerini de taşır ve PR #2 incelemesi fiilen atlanmış olur.
+4. Sunucu dosyaları (`supabase/`, `sunucu.html`, `js/sunucu-*.js`, `tests/sunucu_*`,
+   `tests/server_local_stack.py`) yalnızca `yz2-sunucu-dilim` dalında yaşar; başka dala
+   elle kopyalanmaz veya cherry-pick edilmez — böylece "çift giriş" olmaz.
+5. PR #2 yanlışlıkla önce birleştirilirse GitHub, PR #3'ün base'ini otomatik gh-pages'e
+   çevirir; o durumda PR #3 yalnız kalan sunucu dilimini taşır — veri çiftlenmez, ama
+   tercih edilen sıra 1→2'dir (inceleme bütünlüğü korunur).
+
+### 9.2 SECURITY DEFINER RPC denetimi (D1–D9)
+
+- **Grant matrisi katalogdan kanıtlı** (pg_proc ACL, grep değil): hiçbir RPC/yardımcıda
+  PUBLIC EXECUTE yok (NULL proacl = varsayılan PUBLIC hakkı da dahil); anon hiçbirinde
+  yok; `authenticated` yalnız 8 RPC + 2 RLS yardımcısı + 3 auth JWT yardımcısında var;
+  iç yardımcılar (`flow_fingerprint`, `jsonb_diff`, `_req_uid`, `_actor_role`,
+  `_report_locked`, `_audit`) yalnız sahibinde. Bulgu üzerine `0040_denetim_sertlestirme.sql`
+  eklendi: 0010/0020 fonksiyonları `alter default privileges`'tan önce doğduğu için PUBLIC
+  EXECUTE ile geliyordu — kapatıldı.
+- **Yetki kaynağı**: tenant/rol yalnız JWT `sub` + `memberships` tablosundan türetilir.
+  İstemcinin fazladan gönderdiği `p_user_id`/`p_tenant_id`/`p_role`/`p_approved_by`
+  parametreleri PostgREST'te imza uyuşmazlığıyla (404/PGRST202) reddedilir (D6).
+- **Fonksiyon sahipliği**: public fonksiyonların sahibi HTTP'e açık roller (anon,
+  authenticated, authenticator, gotrue) DEĞİL; `authenticator` NOINHERIT'tir — üyelik
+  üzerinden sahip yetkisi miras almaz (D2). Yerelde sahip `postgres`'tur ve yalnız
+  127.0.0.1 trust ile erişilir; hosted geçişte sahiplik platformundadır.
+- **search_path**: tüm public fonksiyonlarda `set search_path = public, pg_temp`
+  (pg_temp sonda) sabitlendi (D3). GoTrue'nun kurduğu pgcrypto eklenti fonksiyonları
+  kapsam dışıdır (tabloya dokunmazlar).
+- **Dinamik SQL yok** (D4, statik tarama): tüm RPC parametreleri bildirim tipindedir;
+  `EXECUTE format(...)`/`EXECUTE '…'` kalıbı migration'larda bulunmaz. Bu bir statik
+  taramadır; kesinlik iddiası çalışma-zamanı testleriyle (D5–D7) desteklenir.
+- **JWT doğrulama gerçek konfigürasyonda**: yanlış imza, süresi dolmuş, yanlış `aud`,
+  `alg=none` ve var olmayan `role` claim'i taşıyan token'ların tamamı 401/4xx (D5).
+  PostgREST `iss` doğrulamaz — bu bilinen sınırdır; iss güveni imza + aud + kısa exp
+  üçlüsüne dayanır.
+- **Üyelik kaldırma**: üyeliği silinen kullanıcının ELDEKİ (imzası hâlâ geçerli) JWT'si
+  submit'te 403 alır, SELECT'te boş döner (D7) — yetki kararı her çağrıda memberships'tan
+  okunur, JWT tek başına yetki vermez.
+- **Devre dışı bırakma davranışı (dürüst not)**: GoTrue `banned_until` login ve refresh'i
+  reddeder (D8); ancak ban öncesi üretilmiş access token, exp (8 saat) dolana kadar
+  kriptografik olarak geçerlidir — JWT stateless'tır, PostgREST ban tablosuna bakmaz.
+  **Bir kullanıcıyı etkin devre dışı bırakmanın doğru yolu üyeliği silmektir** (anında
+  etkili, D7 ile kanıtlı); ban yalnız yeni token üretimini durdurur.
+
+### 9.3 Oturum ve yerel kuyruk (O1–O4)
+
+- **Kuyruk sahibi kilidi** eklendi: her kuyruk kaydı `owner_email` taşır; başka oturumla
+  gönderim istemcide `OWNER_MISMATCH` ile engellenir, listede "şu anki oturum DEĞİL"
+  göstergesi çıkar ve Gönder/Sil düğmeleri gizlenir (O3). Bu bir yanlışlık korumasıdır;
+  asıl yetki her zaman sunucudadır. Sahipsiz (bu özellikten önceki) kayıtlar bilinçli
+  olarak gönderilebilir kalır (O4) — geriye uyumluluk, raporda gizlenmez.
+- **Oturum düşerse kuyruk kalır**: access+refresh geçersizleştiğinde uygulama giriş
+  ekranına döner ama IndexedDB kuyruğu silinmez; yeniden girişte kayıtlar "bekliyor"
+  durumuyla durur ve gönderilebilir (O1).
+- **Refresh çift iş açmaz**: kayıp-yanıt sabotajı sonrası süresi dolmuş access token
+  refresh ile yenilenir ve aynı `op_id` ile giden yeniden deneme sunucuda `existing`'e
+  düşer — tek bildirim (O2). Sunucu tarafındaki tek transaction + unique(tenant,op_key)
+  sayesinde.
+- **SP1 bağlantı imzası ≠ sunucu oturumu**: SP1 HMAC imzası lab bağlantı anahtarına
+  sahiplik kanıtıdır; bu dilimde sunucu kimliği GoTrue JWT'sidir. SP1 paketi sunucuya
+  doğrulanmış kimlik olarak SUNULMAZ (lab tarafı da değişmedi).
+
+### 9.4 İkinci (fiziksel) cihaz için hazırlık listesi
+
+Tarayıcı context'leri gerçek ayrı oturumdur ama fiziksel cihaz DEĞİLDİR. Telefonla deneme
+için gerekenler (hiçbiri bu turda yapılmadı):
+
+1. Telefonun ulaşabildiği **HTTPS** API adresi (hosted Supabase veya TLS'li ön proxy).
+   `localhost`/`127.0.0.1` telefonda çalışmaz — telefona asla localhost adresi verilmez.
+2. Auth adresleri ve yönlendirme izinleri: GoTrue `GOTRUE_API_EXTERNAL_URL`, `SITE_URL`
+   ve (hosted'da) Site URL / Redirect URL kayıtları telefonun göreceği adrese ayarlanır.
+3. YZ2 önizleme origin'i (gh-pages) CSP `connect-src` listesine API origin'i eklenir;
+   CORS politikası yalnız o origin'e izin verir.
+4. İstemciye yalnız publishable anon key + API URL konur. **service_role, JWT imzalama
+   sırrı ve DB parolası istemciye ASLA konmaz** (bu dilimde de yoktur; denetimi D1).
+5. TEST kullanıcıları yalnız tohum betiğiyle açılır; gerçek kişi hesapları ayrı akışla.
+6. Telefon PWA'sı için `sw.js` önbellek sürümü her dağıtımda artırılır (sw-assets testi
+   bunu zorunlu kılar).
+
+### 9.5 Kurulum güvenliği
+
+- **Sabitlenmiş sürümler + sha256**: PostgREST v16.4 ve GoTrue v2.197.0 binary'leri
+  `server_local_stack.py` içindeki pinlerle doğrulanır; uyuşmazlıkta kurulum durur
+  (fail-closed). İndirme yalnız resmi kanallardandır: GitHub release varlıkları veya
+  resmi `ghcr.io/supabase/auth` OCI imajı (bu oturumda GitHub asset CDN'i ağdan
+  erişilemezdi; GoTrue binary'si resmi imajdan çıkarıldı ve pini ayrı etiketle yazıldı —
+  GitHub asset baytı doğrulanınca ikinci pin eklenecek). Pin sabotaj testi D9'da kanıtlı.
+- **Örnek sır kabul edilmez**: jwt_secret çalışma anında üretilir (48 byte url-safe),
+  bilinen örnek/placeholder sırlar ve 32 karakterden kısa değerler reddedilir.
+- **Dosya izinleri**: `/tmp/yz2srv` 0700; `jwt_secret`, `postgrest.conf`, `gotrue.env`
+  0600 (içlerinde sır/parola var).
+- **İstek sınırları**: PostgREST `db-max-rows = 1000`; DB düzeyinde `statement_timeout=8s`
+  ve `idle_in_transaction_session_timeout=30s` (postgres ve gotrue rolleri muaf).
+  PostgREST'in gövde-boyutu sınırı YOKTUR — hosted geçişte ön proxy/platform sınırı
+  planlanır (açık eksik). GoTrue token uçlarında yerelde oran sınırı yoktur; hosted'da
+  platform sağlar (açık eksik).
+- **Loglar**: script sırları basmaz; GoTrue/PostgREST logları parola/token içermez
+  (varsayılan seviye). Yedek dosyaları sır içermez ama veri içerir — depoya konmaz.
+
+### 9.6 Yedek ve geri dönüş — kavram ayrımı
+
+| Kavram | Komut | Ne yapar | Geri dönüş mü? |
+|---|---|---|---|
+| Test ortamı sıfırlama | `seed` | TEST tohumunu yeniden uygular | Hayır |
+| Servis durdurma | `down` | postgrest/gotrue durur, veri durur | Hayır (duraklatma) |
+| **Yedek** | `backup <dosya>` | pg_dump özel biçim + satır özeti | Yedeğin kendisi |
+| **Geri yükleme** | `restore <dosya> <yz2_…>` | Ayrı/boş DB'ye yükler | **Evet** |
+| wipe | `wipe --evet` | her şeyi siler (korumalı) | **Hayır — veri silme** |
+| İleri-düzeltme | migration tekrarı | idempotent; veriyi bozmaz | Forward-fix |
+
+Kanıt (Y1–Y6): örnek akış (onaylı iş + düzeltme istenmiş rapor) üzerinden alınan yedek,
+farklı boş bir DB'ye geri yüklendi; 7 tablonun tamamı satır-satır JSON eşitliğiyle birebir
+çıktı; works→reports, approvals→reports, audit→reports zincirlerinde kopuk kayıt yok;
+örnek onaylı rapor ve iş aynı kimliklerle duruyor. `wipe` onaysız ve işaretsiz reddedilir.

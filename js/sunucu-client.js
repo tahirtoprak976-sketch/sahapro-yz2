@@ -240,6 +240,8 @@ export async function outboxRefresh() {
       const a = await apiGet(
         `/audit?report_id=eq.${item.report_id}&action=eq.${r.state}&order=created_at.desc&limit=1&select=reason`);
       item.reason = a[0]?.reason || null;
+    } else {
+      item.reason = null;   // akış ilerlediyse eski gerekçe artık geçerli değil
     }
     await outboxPut(item);
   }

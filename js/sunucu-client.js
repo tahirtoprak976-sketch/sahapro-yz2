@@ -150,12 +150,22 @@ export const outboxGet = (opId) => withStore("readonly", (s) => s.get(opId));
 export async function outboxDraft(fields) {
   const item = {
     op_id: crypto.randomUUID(),           // kalıcı işlem kimliği — yeniden denemelerde AYNI kalır
+    owner_email: getSession()?.email || null,  // kaydı oluşturan oturum; başka oturumla gönderilemez
     fields, status: "bekliyor",           // Telefonda bekliyor
     report_id: null, server_state: null, reason: null, error: null,
     attempts: 0, created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
   };
   await withStore("readwrite", (s) => s.put(item));
   return item;
+}
+
+// Kuyruk sahibi kilidi: kaydı oluşturan kullanıcıyla şu anki oturum farklıysa
+// gönderim İSTEMCİDE engellenir (sunucuya hiç gitmez). Bu bir güvenlik sınırı
+// değil, yanlışlık korumasıdır — asıl yetki her zaman sunucuda denetlenir.
+// owner_email olmayan eski kayıtlar (bu özellikten önce oluşanlar) geçer.
+function ownerMismatch(item) {
+  const me = getSession()?.email;
+  return Boolean(item.owner_email && me && item.owner_email !== me);
 }
 
 async function outboxPut(item) {
@@ -193,9 +203,15 @@ function mapServerState(state) {
 export async function outboxSend(opId, fieldsOverride) {
   const item = await outboxGet(opId);
   if (!item) throw clientError(400, "kayıt yok");
+  if (ownerMismatch(item)) {
+    item.error = `OWNER_MISMATCH: kayıt ${item.owner_email} adına oluşturuldu; o oturumla gönderilemez`;
+    await outboxPut(item);
+    throw clientError(403, item.error);
+  }
   const fields = fieldsOverride || item.fields;
   item.status = "gonderiliyor";
   item.error = null;
+  item.attempts = (item.attempts || 0) + 1;
   await outboxPut(item);
   let out;
   try {
@@ -226,10 +242,11 @@ export async function outboxSend(opId, fieldsOverride) {
   return item;
 }
 
-// Sürücü durum yenileme: sunucudaki gerçek durumu kuyruğa işler
+// Sürücü durum yenileme: sunucudaki gerçek durumu kuyruğa işler.
+// Başka kullanıcıya ait kayıtlar atlanır (yanlış oturumla durum güncellemesi yapılmaz).
 export async function outboxRefresh() {
   const items = await outboxList();
-  const mine = items.filter((i) => i.report_id);
+  const mine = items.filter((i) => i.report_id && !ownerMismatch(i));
   for (const item of mine) {
     const rows = await apiGet(`/reports?id=eq.${item.report_id}&select=id,state`);
     const r = rows[0];

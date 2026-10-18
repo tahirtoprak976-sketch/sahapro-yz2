@@ -95,12 +95,16 @@ async function renderDriver() {
       ? ` — ${SERVER_STATE_LABELS[it.server_state] || it.server_state}` : "";
     const reason = it.reason ? ` — sebep: ${it.reason}` : "";
     const err = it.error ? ` — hata: ${it.error}` : "";
+    const me = getSession()?.email;
+    const foreign = it.owner_email && me && it.owner_email !== me;
+    const owner = it.owner_email ? `sahip: ${it.owner_email}${foreign ? " (şu anki oturum DEĞİL — gönderim engelli)" : ""}` : "sahip: (eski kayıt)";
     div.innerHTML = `
       <div><b>${esc(fieldsSummary(it.fields))}</b></div>
       <div class="dim">durum: ${esc(label)}${esc(sub)}${esc(reason)}${esc(err)}</div>
+      <div class="dim">${esc(owner)}</div>
       <div class="dim">op: ${esc(it.op_id.slice(0, 8))}… · deneme: ${it.attempts}</div>`;
     const btns = document.createElement("div");
-    if (it.status === "bekliyor") {
+    if (it.status === "bekliyor" && !foreign) {
       const b = document.createElement("button");
       b.className = "lab-btn"; b.textContent = "Gönder";
       b.onclick = async () => { hideMsg(); try { await outboxSend(it.op_id); } catch (e) { msg(e.message, "err"); } await renderDriver(); };
@@ -110,7 +114,7 @@ async function renderDriver() {
       d.onclick = async () => { await outboxRemove(it.op_id); await renderDriver(); };
       btns.appendChild(d);
     }
-    if (it.status === "duzeltme_istendi") {
+    if (it.status === "duzeltme_istendi" && !foreign) {
       const b = document.createElement("button");
       b.className = "lab-btn"; b.textContent = "Düzelt ve yeniden gönder";
       b.onclick = async () => {

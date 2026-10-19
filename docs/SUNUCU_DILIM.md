@@ -45,7 +45,7 @@ aynı geçişler, aynı op-key/fingerprint girdileri:
 |---|---|---|
 | Gönderim idempotent | op_key + fingerprint | `unique(tenant_id, op_key)` + `submit_work` → `created`/`existing`/`resubmitted`/`OP_CONFLICT` |
 | Versiyon kontrolü | expected_version | her geçişte `VERSION_CONFLICT` |
-| Geçerli durum geçişi | durum makinesi | her geçişte `BAD_STATE` kontrolü |
+| Geçerli durum geçişi | durum makinesi | her RPC'de `BAD_STATE` kontrolü |
 | T12: onay beklerken düzeltme | kontrol geçersiz | `edit_report` → `kontrolde` + `check_revoked` + audit `kontrol_gecersiz` |
 | Onay taze kontrole bağlı | checked_rev | `approve_report` → `REV_MISMATCH` / `CHECK_STALE` |
 | Tek iş | tekil onay | `works.report_id` UNIQUE + `unique(tenant_id, op_key)` + advisory lock |

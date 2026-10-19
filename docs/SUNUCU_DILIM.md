@@ -45,7 +45,7 @@ aynı geçişler, aynı op-key/fingerprint girdileri:
 |---|---|---|
 | Gönderim idempotent | op_key + fingerprint | `unique(tenant_id, op_key)` + `submit_work` → `created`/`existing`/`resubmitted`/`OP_CONFLICT` |
 | Versiyon kontrolü | expected_version | her geçişte `VERSION_CONFLICT` |
-| Geçerli durum geçişi | durum makinesi | her RPC'de `BAD_STATE` kontrolü |
+| Geçerli durum geçişi | durum makinesi | her geçişte `BAD_STATE` kontrolü |
 | T12: onay beklerken düzeltme | kontrol geçersiz | `edit_report` → `kontrolde` + `check_revoked` + audit `kontrol_gecersiz` |
 | Onay taze kontrole bağlı | checked_rev | `approve_report` → `REV_MISMATCH` / `CHECK_STALE` |
 | Tek iş | tekil onay | `works.report_id` UNIQUE + `unique(tenant_id, op_key)` + advisory lock |
@@ -214,11 +214,12 @@ Fotoğraf, finans ve SOLO entegrasyonu bu denemenin de kapsamı dışındadır.
    JWT'si + IndexedDB kuyruğu kalır (cihazlar arası kopyalanmaz). Yalnız TEST- önekli
    örnek kayıt girilir; gerçek iş verisi GİRİLMEZ. Yedek gerekirse Supabase panelinden
    alınır; istemci yedeğine sır konmaz.
-5. **Güncel maliyet/kota**: kurulum günü supabase.com/pricing'den doğrulanır — "kesin
-   ücretsiz" denmez. Free planın bilinen tipik sınırları: ~500 MB veritabanı, sınırlı
-   bant genişliği ve hareketsiz projede duraklatma (pause). Bu denemenin yükü (5 hesap,
-   düşük iki haneli RPC sayısı) bu sınırların çok altındadır; yine de kota ekranı kurulum
-   günü kontrol edilip kaydedilir.
+5. **Güncel maliyet/kota** (2026-10-19'da supabase.com/pricing'den doğrulandı; kaynak
+   listesi §9.7'de): Free plan = 500 MB veritabanı, 5 GB egress, 50.000 MAU, sınırsız
+   API isteği, en çok 2 aktif proje; 1 hafta hareketsizlikte otomatik pause; otomatik
+   yedek YOK. "Kesin ücretsiz" denmez — kota ekranı kurulum günü yeniden kontrol edilip
+   kaydedilir. Bu denemenin yükü (5 hesap, düşük iki haneli RPC sayısı) sınırların çok
+   altındadır.
 6. **Kapatma adımları** (deneme bitince): (a) TEST verisi SQL ile temizlenir veya proje
    Settings → Pause ile duraklatılır; tam silme için Delete Project (geri alınamaz — önce
    yedek gerekip gerekmediği sorulur); (b) telefonlarda site verisi (IndexedDB + service
@@ -244,9 +245,12 @@ Fotoğraf, finans ve SOLO entegrasyonu bu denemenin de kapsamı dışındadır.
   0600 (içlerinde sır/parola var).
 - **İstek sınırları**: PostgREST `db-max-rows = 1000`; DB düzeyinde `statement_timeout=8s`
   ve `idle_in_transaction_session_timeout=30s` (postgres ve gotrue rolleri muaf).
-  PostgREST'in gövde-boyutu sınırı YOKTUR — hosted geçişte ön proxy/platform sınırı
-  planlanır (açık eksik). GoTrue token uçlarında yerelde oran sınırı yoktur; hosted'da
-  platform sağlar (açık eksik).
+  PostgREST'in gövde-boyutu sınırı YOKTUR; hosted Data API için de resmî bir gövde bayt
+  sınırı doğrulanamadı (2026-10, §9.7) — bu sınır AÇIK kalır. RPC girişlerine eklenebilecek
+  alan uzunluğu kontrolü yalnız uygulama seviyesinde bir önlemdir; sunucuya gelen toplam
+  istek boyutunu ağ seviyesinde SINIRLAMAZ ve bu açık sınırın yerine geçmez. GoTrue token
+  uçlarında yerelde oran sınırı yoktur; hosted'da Auth uçları için resmî IP-başına
+  token-bucket oran sınırı vardır (aşımda 429; kaynak §9.7).
 - **Loglar**: script sırları basmaz; GoTrue/PostgREST logları parola/token içermez
   (varsayılan seviye). Yedek dosyaları sır içermez ama veri içerir — depoya konmaz.
 
@@ -265,3 +269,37 @@ Kanıt (Y1–Y6): örnek akış (onaylı iş + düzeltme istenmiş rapor) üzeri
 farklı boş bir DB'ye geri yüklendi; 7 tablonun tamamı satır-satır JSON eşitliğiyle birebir
 çıktı; works→reports, approvals→reports, audit→reports zincirlerinde kopuk kayıt yok;
 örnek onaylı rapor ve iş aynı kimliklerle duruyor. `wipe` onaysız ve işaretsiz reddedilir.
+
+### 9.7 Resmî kaynaklar ve hosted doğrulama notları (2026-10-19)
+
+Hosted davranışına ilişkin iddialar yalnız aşağıdaki resmî kaynaklara dayanır (hepsi
+2026-10-19'da açılıp metinden doğrulandı):
+
+- Oturumlar ve JWT ömrü (varsayılan 1 saat; üstü güvenlik nedeniyle önerilmez; oturum
+  sonlandırma koşulları; `session_id` ↔ `auth.sessions` kontrolü):
+  https://supabase.com/docs/guides/auth/sessions
+- Ban / kullanıcı silme davranışı (geçici ban oturumları iptal ETMEZ; silme
+  `auth.sessions`'a cascade eder ama eldeki access token `exp`'e kadar geçerli; iki
+  resmî telafi: kısa JWT ömrü + hassas işlemlerde `session_id` kontrolü):
+  https://supabase.com/docs/guides/auth/managing-user-data
+- JWT alanları, `iss` biçimi (`https://<proje-ref>.supabase.co/auth/v1`) ve JWKS ucu
+  (`/auth/v1/.well-known/jwks.json`): https://supabase.com/docs/guides/auth/jwts
+- Auth uçları oran sınırları (IP başına token bucket; aşımda 429; varsayılanlar ve
+  panelden özelleştirme): https://supabase.com/docs/guides/auth/rate-limits
+- Data API yanıt satır üst sınırı (varsayılan 1000; API Settings'ten değişir):
+  https://supabase.com/docs/reference/javascript/select
+- Plan ücret/kota koşulları: https://supabase.com/pricing
+
+**Free plan, 2026-10-19'da pricing sayfasından doğrulandı:** 500 MB veritabanı, 5 GB
+egress, 50.000 MAU, sınırsız API isteği, en çok 2 aktif proje; 1 hafta hareketsizlikte
+otomatik pause (panelden elle geri açılır); otomatik yedek yok. **"Session timeouts"
+(zaman kutusu / hareketsizlik sonlandırma) ve "Single session per user" Free plana
+dahil DEĞİL** — kurulumda bu kontrollere güvenilmez; tek dayanak JWT ömrünün varsayılan
+1 saatte tutulmasıdır (hosted varsayılanı zaten 1 saattir; panelden doğrulanması kurulum
+checklist'indedir). "Kesin ücretsiz" denmez; kurulum günü kota ekranı yeniden kontrol
+edilir.
+
+**Açık kalan sınır (değişmedi):** Data API'ye gelen TEK isteğin gövde bayt üst sınırı
+hosted için resmî kaynakla doğrulanamadı. RPC alan uzunluğu kontrolü uygulama
+seviyesindedir; toplam istek boyutunu ağ seviyesinde sınırlamaz ve bu sınırın yerine
+geçmez. Kurulum günü canlı projede doğrulanacak açık checklist maddesidir.

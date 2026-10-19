@@ -1,11 +1,12 @@
 // Versioned atomic app shell. Existing cached assets are never mixed with a new release.
-const CACHE = "yz2-solo-v1-20261018-akis-sp1-1";
+const CACHE = "yz2-solo-v1-20261018-sunucu-dilim-2";
 const CDN_CACHE = "yz2-solo-cdn-v1";
 const ASSETS = [
   "./js/assistant-price.js", "./js/ai-guard.js", "./js/evidence-report.js",
   "./js/flow-core.js", "./js/flow-store.js", "./js/flow-identity.js", "./js/flow-service.js",
   "./js/flow-sp1.js",
   "./lab.html", "./js/flow-lab-ui.js",
+  "./sunucu.html", "./js/sunucu-client.js", "./js/sunucu-ui.js",
   "./",
   "./index.html",
   "./sofor.html",

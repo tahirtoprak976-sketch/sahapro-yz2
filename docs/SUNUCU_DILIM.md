@@ -190,21 +190,44 @@ PR zinciri: **PR #3** (`yz2-sunucu-dilim` → base `yz2-akis-cekirdek`) ve
   sahiplik kanıtıdır; bu dilimde sunucu kimliği GoTrue JWT'sidir. SP1 paketi sunucuya
   doğrulanmış kimlik olarak SUNULMAZ (lab tarafı da değişmedi).
 
-### 9.4 İkinci (fiziksel) cihaz için hazırlık listesi
+### 9.4 İki gerçek telefonda en küçük deneme planı (kurulum bu turda YAPILMADI)
 
-Tarayıcı context'leri gerçek ayrı oturumdur ama fiziksel cihaz DEĞİLDİR. Telefonla deneme
-için gerekenler (hiçbiri bu turda yapılmadı):
+Tarayıcı context'leri gerçek ayrı oturumdur ama fiziksel cihaz DEĞİLDİR. Amaç, yalnız şu
+akışı iki telefonda canlı görmektir: **şoför gönderir → ofis kontrol eder → yönetici
+onaylar → şoför sonucu görür** (+ çevrimdışı gönderim ve tekrar denemede tek kayıt).
+Fotoğraf, finans ve SOLO entegrasyonu bu denemenin de kapsamı dışındadır.
 
-1. Telefonun ulaşabildiği **HTTPS** API adresi (hosted Supabase veya TLS'li ön proxy).
-   `localhost`/`127.0.0.1` telefonda çalışmaz — telefona asla localhost adresi verilmez.
-2. Auth adresleri ve yönlendirme izinleri: GoTrue `GOTRUE_API_EXTERNAL_URL`, `SITE_URL`
-   ve (hosted'da) Site URL / Redirect URL kayıtları telefonun göreceği adrese ayarlanır.
-3. YZ2 önizleme origin'i (gh-pages) CSP `connect-src` listesine API origin'i eklenir;
-   CORS politikası yalnız o origin'e izin verir.
-4. İstemciye yalnız publishable anon key + API URL konur. **service_role, JWT imzalama
-   sırrı ve DB parolası istemciye ASLA konmaz** (bu dilimde de yoktur; denetimi D1).
-5. TEST kullanıcıları yalnız tohum betiğiyle açılır; gerçek kişi hesapları ayrı akışla.
-6. Telefon PWA'sı için `sw.js` önbellek sürümü her dağıtımda artırılır (sw-assets testi
+1. **HTTPS adresi**: tek hosted Supabase projesi; telefonlara verilen adres
+   `https://<proje-ref>.supabase.co` olur. `localhost`/`127.0.0.1` telefonda çalışmaz —
+   telefona asla localhost adresi verilmez. YZ2 istemcisi gh-pages önizlemesinden açılır;
+   CSP `connect-src` listesine API origin'i eklenir, CORS yalnız o origin'e izin verir.
+2. **Gerekli servisler**: yalnız Auth (GoTrue) + Data API (PostgREST) — hosted projede
+   hazır gelir. Storage bu denemede gerekmez (fotoğraf kapsam dışı). Migration'lar 0001
+   HARİÇ sırayla SQL editöründen uygulanır (roller hosted'da hazırdır; 0001 yalnız
+   yereldir), 0040 dahil. Auth ayarları: Site URL telefonların göreceği adrese ayarlanır;
+   TEST hesapları için e-posta doğrulaması kapalı/auto-confirm tutulur.
+3. **Test kullanıcıları**: tohumdaki 5 TEST hesabı (`test-sofor-1`, `test-ofis-1`,
+   `test-yonetici-1/2`, `test-rakip-sofor` @example.invalid, parola tohumda). Telefon 1:
+   şoför; telefon 2: ofis + yönetici (üyelikler aynı hesapta toplanabilir; roller yine
+   sunucuda denetlenir). Gerçek kişi hesabı açılmaz.
+4. **Veri saklama**: sunucu verisi projenin Postgres'inde durur; telefonda yalnız oturum
+   JWT'si + IndexedDB kuyruğu kalır (cihazlar arası kopyalanmaz). Yalnız TEST- önekli
+   örnek kayıt girilir; gerçek iş verisi GİRİLMEZ. Yedek gerekirse Supabase panelinden
+   alınır; istemci yedeğine sır konmaz.
+5. **Güncel maliyet/kota**: kurulum günü supabase.com/pricing'den doğrulanır — "kesin
+   ücretsiz" denmez. Free planın bilinen tipik sınırları: ~500 MB veritabanı, sınırlı
+   bant genişliği ve hareketsiz projede duraklatma (pause). Bu denemenin yükü (5 hesap,
+   düşük iki haneli RPC sayısı) bu sınırların çok altındadır; yine de kota ekranı kurulum
+   günü kontrol edilip kaydedilir.
+6. **Kapatma adımları** (deneme bitince): (a) TEST verisi SQL ile temizlenir veya proje
+   Settings → Pause ile duraklatılır; tam silme için Delete Project (geri alınamaz — önce
+   yedek gerekip gerekmediği sorulur); (b) telefonlarda site verisi (IndexedDB + service
+   worker önbelleği) tarayıcı ayarından temizlenir; (c) istemciye konan anon key + API
+   URL'si geri alınır (localhost'a döndürülür).
+7. **İstemci değişikliği** (kurulum günü, ayrı küçük commit): `js/sunucu-client.js`
+   içindeki PGRST/GOTRUE sabitleri hosted adrese çevrilir ve isteklere publishable anon
+   key (`apikey` header) eklenir. **service_role, JWT sırrı ve DB parolası istemciye
+   ASLA konmaz.** `sw.js` önbellek sürümü bu dağıtımda da artırılır (sw-assets testi
    bunu zorunlu kılar).
 
 ### 9.5 Kurulum güvenliği
